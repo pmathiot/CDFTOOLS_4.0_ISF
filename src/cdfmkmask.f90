@@ -55,6 +55,7 @@ PROGRAM cdfmkmask
 
   CHARACTER(LEN=256)                        :: cf_tfil                  ! file name
   CHARACTER(LEN=256)                        :: cf_out = 'mask_sal.nc'   ! output file
+  CHARACTER(LEN=256)                        :: cf_boundary = 'boundary.txt' ! default boundary input file
   CHARACTER(LEN=256)                        :: cv_mask                  ! variable name
   CHARACTER(LEN=256)                        :: cv_dep                   ! variable name
   CHARACTER(LEN=256)                        :: cldum                    ! dummy string
@@ -66,6 +67,7 @@ PROGRAM cdfmkmask
   LOGICAL                                   :: lzoombat = .FALSE.       ! zoom flag bat
   LOGICAL                                   :: lzoomvar = .FALSE.       ! zoom flag var
   LOGICAL                                   :: lfill    = .FALSE.       ! flood fill algo flag    
+  LOGICAL                                   :: lboundf  = .FALSE.       ! section flag var
   LOGICAL                                   :: ltime    = .FALSE.       ! time flag    
   LOGICAL                                   :: lmbathy  = .FALSE.       ! mbathy flag    
   LOGICAL                                   :: l2dmask  = .FALSE.       ! 2d mask flag
@@ -79,6 +81,7 @@ PROGRAM cdfmkmask
      PRINT *,'                   ... [-zoombat bathymin bathymax]  ...'
      PRINT *,'                   ... [-zoomvar varname varmin varmax]  ...'
      PRINT *,'                   ... [-fill iipoint jjpoint] ...'
+     PRINT *,'                   ... [-bf txt_file] ...'
      PRINT *,'                   ... [-time ] [-o OUT-file]'
      PRINT *,'      '
      PRINT *,'     PURPOSE :'
@@ -120,6 +123,7 @@ PROGRAM cdfmkmask
      PRINT *,'                        Format of the file is on each line : '
      PRINT *,'                        NAME /n iimin iimax jjmin jjmax linc.'
      PRINT *,'                        Section is exclude from the selection if linc=F .'
+     PRINT *,'       [-bf txtfile] : txt file describing the section used in -fill'
      PRINT *,'       [-time ] : If further time step is available'
      PRINT *,'                        a mask for each time step is done'
      PRINT *,'       [-o OUT-file ] : output file name to be used in place of standard'
@@ -172,6 +176,9 @@ PROGRAM cdfmkmask
         lfill = .true.
         CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) iipts
         CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) ijpts
+     CASE ( '-bf' )    ! read boundary file name
+        lboundf=.TRUE.
+        CALL getarg (ijarg, cf_boundary) ; ijarg = ijarg + 1
      CASE ( '-time' )  ! create a mask for each time step of the file
         ltime=.TRUE.
      CASE ( '-o'    )  ! change output file name
@@ -377,30 +384,40 @@ CONTAINS
     rmskline(:,:) = 0.0
     rmsk_bck = rmask
 
-    OPEN(iunit, FILE='boundary.txt')
-    lsection = .TRUE.
-    DO WHILE (lsection)
-       rxx(:)=1; ryy(:)=1
+    IF (lboundf) THEN
+       PRINT *,''
+       PRINT *,'Boundary file: ',TRIM(cf_boundary),' is used to close the basin'
+       PRINT *,''
 
-       ! read section name
-       READ(iunit,'(a)') csection
-       IF (TRIM(csection) == 'EOF' ) THEN
-          lsection = .FALSE.
-       ELSE
-          ! read section coordinates
-          READ(iunit,*) iimin, iimax, ijmin, ijmax, linc
+       OPEN(iunit, FILE=cf_boundary)
+       lsection = .TRUE.
+       DO WHILE (lsection)
+          rxx(:)=1; ryy(:)=1
 
-          ! get index of cell included into the section
-          CALL broken_line(iimin, iimax, ijmin, ijmax, rxx, ryy, npt, npiglo, npjglo)
+          ! read section name
+          READ(iunit,'(a)') csection
+          IF (TRIM(csection) == 'EOF' ) THEN
+             lsection = .FALSE.
+          ELSE
+             ! read section coordinates
+             READ(iunit,*) iimin, iimax, ijmin, ijmax, linc
+
+             ! get index of cell included into the section
+             CALL broken_line(iimin, iimax, ijmin, ijmax, rxx, ryy, npt, npiglo, npjglo)
  
-          ! mask boundary and keep location in rmskline
-          DO jk=1,npt
-             IF (linc)  rmskline(rxx(jk),ryy(jk))=1.0 * rmsk_bck(rxx(jk),ryy(jk))
-             rmask(rxx(jk),ryy(jk))=0.0
-          END DO
-       ENDIF
-    END DO
-    CLOSE(iunit)
+             ! mask boundary and keep location in rmskline
+             DO jk=1,npt
+                IF (linc)  rmskline(rxx(jk),ryy(jk))=1.0 * rmsk_bck(rxx(jk),ryy(jk))
+                rmask(rxx(jk),ryy(jk))=0.0
+             END DO
+          ENDIF
+       END DO
+       CLOSE(iunit)
+    ELSE
+       PRINT *,''
+       PRINT *, 'NO BOUNDARIES ARE ADDED TO THE INPUT FILE TO CLOSE THE BASIN'
+       PRINT *,''
+    END IF
 
     ! fill area
     imask = NINT(rmask,2)
