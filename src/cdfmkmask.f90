@@ -389,6 +389,8 @@ CONTAINS
        PRINT *,'Boundary file: ',TRIM(cf_boundary),' is used to close the basin'
        PRINT *,''
 
+       IF ( chkfile(cf_boundary) ) STOP 99 ! missing file
+
        OPEN(iunit, FILE=cf_boundary)
        lsection = .TRUE.
        DO WHILE (lsection)
