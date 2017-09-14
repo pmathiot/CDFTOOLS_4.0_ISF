@@ -70,6 +70,7 @@ PROGRAM cdf_xtract_brokenline
   INTEGER(KIND=4), DIMENSION(:,:,:), ALLOCATABLE :: iilegs, ijlegs   ! F-index of points on the broken line per leg
 
   REAL(KIND=4)                              :: ztmp
+  REAL(KIND=4)                              :: rspval              ! output special value
   REAL(KIND=4)                              :: xmin, xmax, ymin, ymax !
   REAL(KIND=4), DIMENSION(:),   ALLOCATABLE :: gdept               ! Model deptht levels
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: rxx, ryy            ! leg i j index of F points
@@ -125,6 +126,9 @@ PROGRAM cdf_xtract_brokenline
   LOGICAL  :: lchk                                  ! flag for missing files
   LOGICAL  :: lverbose = .FALSE.                    ! flag for verbosity
   LOGICAL  :: lsecfile = .FALSE.                    ! flag for input section file
+  LOGICAL  :: lvelo    = .FALSE.                    ! flag for velocity input
+  LOGICAL  :: lvelou   = .FALSE.                    ! flag for velocity input
+  LOGICAL  :: lvelov   = .FALSE.                    ! flag for velocity input
   LOGICAL  :: lssh     = .FALSE.                    ! flag for saving ssh
   LOGICAL  :: lmld     = .FALSE.                    ! flag for saving mld
   LOGICAL  :: lice     = .FALSE.                    ! flag for saving ice*
@@ -244,8 +248,8 @@ PROGRAM cdf_xtract_brokenline
      CALL getarg(ijarg, cldum) ; ijarg = ijarg + 1
      SELECT CASE  ( cldum   )
      CASE ( '-t'       ) ; CALL getarg(ijarg, cf_tfil ) ; ijarg=ijarg+1
-     CASE ( '-u'       ) ; CALL getarg(ijarg, cf_ufil ) ; ijarg=ijarg+1
-     CASE ( '-v'       ) ; CALL getarg(ijarg, cf_vfil ) ; ijarg=ijarg+1
+     CASE ( '-u'       ) ; CALL getarg(ijarg, cf_ufil ) ; lvelou = .TRUE. ; ijarg=ijarg+1
+     CASE ( '-v'       ) ; CALL getarg(ijarg, cf_vfil ) ; lvelov = .TRUE. ; ijarg=ijarg+1
         ! options
      CASE ( '-i'       ) ; CALL getarg(ijarg, cf_ifil ) ; ijarg=ijarg+1 ; lice = .TRUE. ;  nvar=nvar+2
      CASE ( '-o '      ) ; CALL getarg(ijarg, cf_root ) ; ijarg=ijarg+1
@@ -269,13 +273,22 @@ PROGRAM cdf_xtract_brokenline
   ENDIF
   IF ( cf_mfil == 'none') THEN ; cf_mfil = cf_tfil
   ENDIF
+
+  ! is velocity asked ?
+  lvelo = lvelou .AND. lvelov
+  IF (.NOT. lvelo) PRINT *, 'W A R N I N G: no velocity filed in argument'
+
   ! check file existence
   lchk = chkfile(cn_fhgr )
   lchk = chkfile(cf_bath ) .OR. lchk 
   lchk = chkfile(cn_fzgr ) .OR. lchk
   lchk = chkfile(cf_tfil ) .OR. lchk
-  lchk = chkfile(cf_ufil ) .OR. lchk
-  lchk = chkfile(cf_vfil ) .OR. lchk
+
+  IF (lvelo) THEN
+     lchk = chkfile(cf_ufil ) .OR. lchk
+     lchk = chkfile(cf_vfil ) .OR. lchk
+  END IF
+
   IF ( lsecfile ) THEN 
      DO jsec = 1, nfiles
         lchk = chkfile(cf_lst(jsec) ) .OR. lchk
@@ -583,6 +596,9 @@ PROGRAM cdf_xtract_brokenline
         ENDIF
      END DO
 
+     ! get spval
+     rspval = getspval(cf_tfil, cn_votemper)
+
      ! Prepare output file ( here because rlonsec and rlatsec required )
      CALL CreateOutputFile (jsec )
 
@@ -592,7 +608,6 @@ PROGRAM cdf_xtract_brokenline
      ierr = putvar (ncout(jsec), id_varout(np_e1vn), e1vsec(:,1,jsec),                      1,  npsec(jsec)-1, 1 )
      ierr = putvar (ncout(jsec), id_varout(np_e1v ), e2usec(:,1,jsec) + e1vsec(:,1,jsec),   1,  npsec(jsec)-1, 1 )
      ierr = putvar (ncout(jsec), id_varout(np_bat ), batsec(:,1),                           1,  npsec(jsec)-1, 1 )
-
   END DO  ! section for non depth dependent
 
   ! Temperature and salinity are interpolated on the respective U or V  point for better flux computation
@@ -607,10 +622,16 @@ PROGRAM cdf_xtract_brokenline
      IF ( lice ) ricefra(:,:)   = getvar(cf_ifil, cv_ileadfra, 1, npiglo, npjglo, ktime = jt)
 
      DO jk=1,npk   ! level loop , read only once the horizontal slab
+        PRINT *,jk
         temper(:,:) = getvar(cf_tfil, cn_votemper, jk, npiglo, npjglo, ktime = jt)
         saline(:,:) = getvar(cf_tfil, cn_vosaline, jk, npiglo, npjglo, ktime = jt)
-        uzonal(:,:) = getvar(cf_ufil, cn_vozocrtx, jk, npiglo, npjglo, ktime = jt)
-        vmerid(:,:) = getvar(cf_vfil, cn_vomecrty, jk, npiglo, npjglo, ktime = jt)
+        IF (lvelo) THEN
+           uzonal(:,:) = getvar(cf_ufil, cn_vozocrtx, jk, npiglo, npjglo, ktime = jt)
+           vmerid(:,:) = getvar(cf_vfil, cn_vomecrty, jk, npiglo, npjglo, ktime = jt)
+        ELSE
+           uzonal(:,:) = 0.0
+           vmerid(:,:) = 0.0
+        END IF
 
         IF ( lvecrot ) THEN
            !We put the velocities in point a
@@ -893,7 +914,7 @@ CONTAINS
     stypvar%scale_factor= 1.
     stypvar%add_offset= 0.
     stypvar%savelog10= 0.
-    stypvar%rmissing_value=0.
+    stypvar%rmissing_value=rspval
     stypvar%conline_operation='N/A'
 
     ! define new variables for output 
