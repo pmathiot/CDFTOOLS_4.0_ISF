@@ -824,8 +824,8 @@ CONTAINS
 
     IF ( PRESENT(kstatus)  ) kstatus=0
     IF ( PRESENT(ldexact)  ) lexact=ldexact
-    IF ( cdim_name == cn_x ) lexact=.true.  ! fix for XIOS files having now a new dimension xaxis_bound which match getdim ('x') ....
-                                            ! more clever fix must be found for identification of the dimensions in the input files
+!    IF ( cdim_name == cn_x ) lexact=.true.  ! fix for XIOS files having now a new dimension xaxis_bound which match getdim ('x') ....
+!                                            ! more clever fix must be found for identification of the dimensions in the input files
     istatus=NF90_OPEN(cdfile, NF90_NOWRITE, incid)
     IF ( istatus == NF90_NOERR ) THEN
        istatus=NF90_INQUIRE(incid, ndimensions=idims)
@@ -842,7 +842,7 @@ CONTAINS
        ELSE  ! scann all dims to look for a partial match
          DO jdim = 1, idims
             istatus=NF90_INQUIRE_DIMENSION(incid, jdim, name=clnam, len=getdim)
-            IF ( INDEX(clnam, TRIM(cdim_name)) /= 0 ) THEN
+            IF ( INDEX(clnam, TRIM(cdim_name)) == 1 ) THEN
                IF ( PRESENT(cdtrue) ) cdtrue=clnam
                EXIT
             ENDIF
@@ -1247,6 +1247,15 @@ CONTAINS
     !INTEGER(KIND=4), DIMENSION(:)  :: dimids
     !INTEGER(KIND=4)                :: nAtts
     !!---------------------------------------------------------------------
+
+    ! check if variable in the file
+    IF (chkfile(cdfile)) THEN
+       STOP 98
+    END IF
+    IF (chkvar(cdfile, cdvar)) THEN
+       STOP 98
+    END IF
+
     llperio=.false.
     IF (PRESENT(klev) ) THEN
        ilev=klev
@@ -1258,7 +1267,8 @@ CONTAINS
     IF (PRESENT(kimin) ) THEN
        imin=kimin
 
-       ipiglo=getdim(cdfile, cn_x, ldexact=.true.)
+       !ipiglo=getdim(cdfile, cn_x, ldexact=.true.)
+       ipiglo=getdim(cdfile, cn_x)
        IF (imin+kpi-1 > ipiglo ) THEN 
          llperio=.true.
          imax=kpi+1 +imin -ipiglo
@@ -2831,7 +2841,7 @@ CONTAINS
 
        IF (ll_exist) THEN
           chkfile = .false.
-          IF ( cd_file == cn_fzgr ) ierr = SetMeshZgrVersion ()
+          IF ( cd_file == cn_fzgr ) ierr = SetMeshZgrVersion ( ld_verbose )
        ELSE
           IF ( ll_verbose ) PRINT *, ' File ',TRIM(cd_file),' is missing '
           chkfile = .true.
@@ -3080,7 +3090,7 @@ CONTAINS
 
   END FUNCTION GetNcFile
 
-  INTEGER FUNCTION  SetMeshZgrVersion()
+  INTEGER FUNCTION  SetMeshZgrVersion( ld_verbose )
     !!---------------------------------------------------------------------
     !!                  ***  ROUTINE SetMeshZgrVersion  ***
     !!
@@ -3091,6 +3101,7 @@ CONTAINS
     !!
     !!----------------------------------------------------------------------
     CHARACTER(LEN=10)  :: clvar='e3t_0'
+    LOGICAL, OPTIONAL, INTENT(in) :: ld_verbose
     !!----------------------------------------------------------------------
    
     IF ( chkvar (cn_fzgr, clvar, .false.) ) THEN  ! use quiet mode
@@ -3102,7 +3113,7 @@ CONTAINS
          cg_zgr_ver='v3.6'
       ENDIF
     ENDIF
-    PRINT *,' mesh_zgr version is ', TRIM( cg_zgr_ver )
+    IF (ld_verbose) PRINT *,' mesh_zgr version is ', TRIM( cg_zgr_ver )
     SetMeshZgrVersion=1
 
   END FUNCTION SetMeshZgrVersion
