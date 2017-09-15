@@ -151,7 +151,7 @@ PROGRAM cdf_xtract_brokenline
   ! check argument number and show usage if necessary
   narg = iargc()
   IF ( narg == 0 ) THEN
-     PRINT *,' usage :  cdf_xtrac_brokenline -t T-file -u U-file -v V-file [-i ICE-file] ...'
+     PRINT *,' usage :  cdf_xtrac_brokenline -t T-file [-u U-file] [-v V-file] [-i ICE-file] ...'
      PRINT *,'         ... [-b BAT-file] [-mxl MXL-file] [-f section_filei,sec_file2,..] ...'
      PRINT *,'         ... [-l LST-sections] [-ssh] [-mld] [-vt] [-vecrot] [-vvl W-file] ...'
      PRINT *,'         ... [-o ROOT_name] [-ice] [-verbose]'
@@ -186,10 +186,12 @@ PROGRAM cdf_xtract_brokenline
      PRINT *,'      ' 
      PRINT *,'     ARGUMENTS :'
      PRINT *,'       -t T-file :  model gridT file '
-     PRINT *,'       -u U-file :  model gridU file '
-     PRINT *,'       -v V-file :  model gridV file '
      PRINT *,'      ' 
      PRINT *,'     OPTIONS :'
+     PRINT *,'      [-u U-file ] :  model gridU file '
+     PRINT *,'      [-v V-file ] :  model gridV file ' 
+     PRINT *,'                      If one of the velocity file is missing, u and v velocity' 
+     PRINT *,'                      is assume to be 0.0 '
      PRINT *,'      [-l LST-sections ] : provides a blank-separated list of files for section'
      PRINT *,'              definitions. Section_file is an ascii file as follows :'
      PRINT *,'               * line #1 : name of the section (e.g. ovide). '
@@ -611,7 +613,7 @@ PROGRAM cdf_xtract_brokenline
   END DO  ! section for non depth dependent
 
   ! Temperature and salinity are interpolated on the respective U or V  point for better flux computation
-  DO jt=1, npt  ! time loop
+  DO jt=1, MAX(npt,1)  ! time loop
      IF ( lg_vvl ) THEN ;  it=jt
      ELSE ;                it=1
      ENDIF
@@ -625,6 +627,7 @@ PROGRAM cdf_xtract_brokenline
         PRINT *,jk
         temper(:,:) = getvar(cf_tfil, cn_votemper, jk, npiglo, npjglo, ktime = jt)
         saline(:,:) = getvar(cf_tfil, cn_vosaline, jk, npiglo, npjglo, ktime = jt)
+        PRINT *, MAXVAL(temper)
         IF (lvelo) THEN
            uzonal(:,:) = getvar(cf_ufil, cn_vozocrtx, jk, npiglo, npjglo, ktime = jt)
            vmerid(:,:) = getvar(cf_vfil, cn_vomecrty, jk, npiglo, npjglo, ktime = jt)
