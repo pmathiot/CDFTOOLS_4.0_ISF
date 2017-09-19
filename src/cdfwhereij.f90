@@ -28,6 +28,8 @@ PROGRAM cdfwhereij
   INTEGER(KIND=4)                           :: iimin, iimax   ! i-zoom limit
   INTEGER(KIND=4)                           :: ijmin, ijmax   ! j-zoom limit
   INTEGER(KIND=4)                           :: npiglo, npjglo ! global size
+  INTEGER(KIND=4)                           :: npts, ipts     ! number of pts, loop index
+  INTEGER(KIND=4)                           :: numpts, numout ! file id
 
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: glam, gphi     ! longitude, latitude
 
@@ -35,7 +37,11 @@ PROGRAM cdfwhereij
   CHARACTER(LEN=256)                        :: cv_phi         ! latitude name
   CHARACTER(LEN=256)                        :: ctype='T'      ! type of point on C-grid
   CHARACTER(LEN=256)                        :: cldum          ! dummmy string
+  CHARACTER(LEN=256)                        :: cfile, cfout   ! list of point
+  CHARACTER(LEN=256)                        :: cname          ! name of the list of points
   CHARACTER(LEN=256)                        :: clcoo          ! dummy character variable
+
+  LOGICAL :: llist = .FALSE. , lw = .FALSE. , lout = .FALSE. ! option flag 
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
   clcoo = cn_fcoo
@@ -50,12 +56,19 @@ PROGRAM cdfwhereij
      PRINT *,'       by a rectangular window in (i,j) space.'
      PRINT *,'      '
      PRINT *,'     ARGUMENTS :'
-     PRINT *,'       -w imin imax jmin jmax : (i,j) space window coordinates.' 
      PRINT *,'      '
      PRINT *,'     OPTIONS :'
+     PRINT *,'       [-w ]           : imin imax jmin jmax : (i,j) space window coordinates.' 
+     PRINT *,'       [-l file ]      : file listing all the input points'
+     PRINT *,'                         NAME'
+     PRINT *,'                         NPTS'
+     PRINT *,'                         ii jj'
+     PRINT *,'                         .....'
      PRINT *,'       [-c COOR_file ] : specify a coordinates file instead of ', TRIM(cn_fcoo)
-     PRINT *,'       [-p C-type ] : specify a point type on the C-grid (T U V F),  '
+     PRINT *,'       [-p C-type ]    : specify a point type on the C-grid (T U V F),  '
      PRINT *,'               default is ', TRIM(ctype),'.'
+     PRINT *,'       [-o file ]      : output ready for cdf_xtract_broken'
+     PRINT *,'                         only available if -l option activated'
      PRINT *,'      '
      PRINT *,'     REQUIRED FILES :'
      PRINT *,'       ',TRIM(cn_fcoo),' or COOR-file given in the -c option'
@@ -73,13 +86,16 @@ PROGRAM cdfwhereij
   DO WHILE ( ijarg <= narg) 
      CALL getarg( ijarg, cldum ) ; ijarg= ijarg+1
      SELECT CASE ( cldum )
-     CASE ( '-w' ) ; CALL getarg(ijarg, cldum ) ; ijarg=ijarg+1 ;  READ(cldum,*) iimin
+     CASE ( '-w' ) ; lw = .TRUE.
+        ;            CALL getarg(ijarg, cldum ) ; ijarg=ijarg+1 ;  READ(cldum,*) iimin
         ;            CALL getarg(ijarg, cldum ) ; ijarg=ijarg+1 ;  READ(cldum,*) iimax
         ;            CALL getarg(ijarg, cldum ) ; ijarg=ijarg+1 ;  READ(cldum,*) ijmin
         ;            CALL getarg(ijarg, cldum ) ; ijarg=ijarg+1 ;  READ(cldum,*) ijmax
         ! options
+     CASE ( '-l' ) ; CALL getarg(ijarg, cfile ) ; ijarg=ijarg+1 ; llist = .TRUE. 
      CASE ( '-c' ) ; CALL getarg(ijarg, clcoo ) ; ijarg=ijarg+1
      CASE ( '-p' ) ; CALL getarg(ijarg, ctype ) ; ijarg=ijarg+1
+     CASE ( '-o' ) ; CALL getarg(ijarg, cfout ) ; ijarg=ijarg+1 ; lout  = .TRUE.
      CASE DEFAULT  ; PRINT *,' ERROR : ', TRIM(cldum),' : unknown option.' ; STOP 99
      END SELECT
   END DO
@@ -88,16 +104,6 @@ PROGRAM cdfwhereij
 
   npiglo = getdim (clcoo, cn_x)
   npjglo = getdim (clcoo, cn_y)
-
-  IF ( iimax > npiglo ) THEN
-     PRINT *,' ERROR : imax is greater than the maximum size ', iimax, npiglo
-     STOP 99
-  ENDIF
-
-  IF ( ijmax > npjglo ) THEN
-     PRINT *,' ERROR : jmax is greater than the maximum size ', ijmax, npjglo
-     STOP 99
-  END IF
 
   ALLOCATE (glam(npiglo,npjglo), gphi(npiglo,npjglo) )
 
@@ -113,8 +119,70 @@ PROGRAM cdfwhereij
   glam(:,:) = getvar(clcoo, cv_lam, 1, npiglo, npjglo)
   gphi(:,:) = getvar(clcoo, cv_phi, 1, npiglo, npjglo)
 
-  PRINT '(2a)'     ,' Type of point   : ', TRIM(ctype)
-  PRINT '(a,4i6)'  ,'   I J zoom      : ', iimin, iimax, ijmin, ijmax
-  PRINT '(a,4f9.3)','   LON LAT zoom  : ', glam(iimin,ijmin), glam(iimax,ijmax), gphi(iimin,ijmin), gphi(iimax,ijmax)
+  IF ( lw ) THEN
+     ! check index
+     IF ( chkindex(iimin, ijmin) ) STOP 99
+     IF ( chkindex(iimax, ijmax) ) STOP 99
+     ! print output
+     PRINT '(2a)'     ,' Type of point   : ', TRIM(ctype)
+     PRINT '(a,4i6)'  ,'   I J zoom      : ', iimin, iimax, ijmin, ijmax
+     PRINT '(a,4f9.3)','   LON LAT zoom  : ', glam(iimin,ijmin), glam(iimax,ijmax), gphi(iimin,ijmin), gphi(iimax,ijmax)
+
+  ELSE IF (llist) THEN
+     ! open section file
+     OPEN(numpts,FILE=cfile)
+     READ(numpts,*) cname 
+     READ(numpts,*) npts 
+     ! print std output
+     PRINT '(2a)'     ,' Type of point   : ', TRIM(ctype)
+     PRINT '(2a)'     ,'   NAME  : ', cname
+     PRINT '(a,1i6)'  ,'   NUMBER of points : ', npts
+     PRINT '(a)'      ,'---------------------------'
+     PRINT *,''
+     ! print xtract_broken output
+     IF (lout) THEN
+        numout = 42
+        OPEN(numout,FILE=cfout)
+        WRITE(numout,'(a)')   TRIM(cname) 
+        WRITE(numout,'(4i6)') npts 
+     END IF
+
+     DO ipts = 1,npts
+        ! read point
+        READ(numpts,*) iimin,ijmin
+        IF ( chkindex(iimin, ijmin) ) STOP 99
+        ! print std output
+        PRINT '(a,1i6)'  ,'   POINT         : ', ipts
+        PRINT '(a,2i6)'  ,'   I J zoom      : ', iimin, ijmin
+        PRINT '(a,2f9.3)','   LON LAT zoom  : ', glam(iimin,ijmin), gphi(iimin,ijmin)
+        PRINT *,''
+        ! print xtract_broken output
+        IF (lout) THEN
+           WRITE(numout,'(2f9.3)') glam(iimin,ijmin), gphi(iimin,ijmin)
+        END IF
+     END DO
+  ELSE
+     PRINT  *, 'input coordinate unknown, STOP 99'
+     STOP 99
+  END IF
+
+CONTAINS
+
+  LOGICAL FUNCTION chkindex(ii,jj)
+     
+     INTEGER(KIND=4) :: ii, jj 
+
+     chkindex = .FALSE.
+     IF ( ii > npiglo ) THEN
+        PRINT *,' ERROR : imax is greater than the maximum size ', ii, npiglo
+        chkindex = .TRUE.
+     ENDIF
+
+     IF ( jj > npjglo ) THEN
+        PRINT *,' ERROR : jmax is greater than the maximum size ', jj, npjglo
+        chkindex = .TRUE.
+     END IF
+
+  END FUNCTION chkindex
 
 END PROGRAM cdfwhereij
