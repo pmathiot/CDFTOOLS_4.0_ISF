@@ -1399,6 +1399,7 @@ CONTAINS
     IF (lsf )  WHERE (getvar /= spval )  getvar=getvar*sf
     IF (lao )  WHERE (getvar /= spval )  getvar=getvar + ao
     IF (llog)  WHERE (getvar /= spval )  getvar=10**getvar
+    WHERE (getvar == spval )  getvar=0.0
 
     istatus=NF90_CLOSE(incid)
 
@@ -2833,7 +2834,7 @@ CONTAINS
     IF ( PRESENT(ld_verbose) ) THEN
        ll_verbose = ld_verbose
     ELSE
-       ll_verbose = .TRUE.
+       ll_verbose = .FALSE.
     ENDIF
 
     IF ( TRIM(cd_file) /= 'none')  THEN 
@@ -2841,9 +2842,9 @@ CONTAINS
 
        IF (ll_exist) THEN
           chkfile = .false.
-          IF ( cd_file == cn_fzgr ) ierr = SetMeshZgrVersion ( ld_verbose )
+          IF ( cd_file == cn_fzgr ) ierr = SetMeshZgrVersion ( ll_verbose )
        ELSE
-          IF ( ll_verbose ) PRINT *, ' File ',TRIM(cd_file),' is missing '
+          PRINT *, ' File ',TRIM(cd_file),' is missing '
           chkfile = .true.
        ENDIF
     ELSE  
@@ -2876,7 +2877,7 @@ CONTAINS
        IF ( PRESENT(ld_verbose) ) THEN
           ll_verbose = ld_verbose
        ELSE
-          ll_verbose = .TRUE.
+          ll_verbose = .FALSE.
        ENDIF
     
        ! Open cdf dataset
@@ -2887,7 +2888,7 @@ CONTAINS
        IF ( istatus == NF90_NOERR ) THEN
           chkvar = .false.
        ELSE
-          IF ( ll_verbose ) PRINT *, ' Var ',TRIM(cd_var),' is missing in file ',TRIM(cd_file)
+          PRINT *, ' Var ',TRIM(cd_var),' is missing in file ',TRIM(cd_file)
           chkvar = .true.
        ENDIF
        
@@ -3102,7 +3103,13 @@ CONTAINS
     !!----------------------------------------------------------------------
     CHARACTER(LEN=10)  :: clvar='e3t_0'
     LOGICAL, OPTIONAL, INTENT(in) :: ld_verbose
+    LOGICAL :: ll_verbose
     !!----------------------------------------------------------------------
+    IF ( PRESENT(ld_verbose) ) THEN
+       ll_verbose = ld_verbose
+    ELSE
+       ll_verbose = .FALSE.
+    ENDIF
    
     IF ( chkvar (cn_fzgr, clvar, .false.) ) THEN  ! use quiet mode
          cg_zgr_ver='v2.0'
@@ -3113,7 +3120,7 @@ CONTAINS
          cg_zgr_ver='v3.6'
       ENDIF
     ENDIF
-    IF (ld_verbose) PRINT *,' mesh_zgr version is ', TRIM( cg_zgr_ver )
+    IF (ll_verbose) PRINT *,' mesh_zgr version is ', TRIM( cg_zgr_ver )
     SetMeshZgrVersion=1
 
   END FUNCTION SetMeshZgrVersion
