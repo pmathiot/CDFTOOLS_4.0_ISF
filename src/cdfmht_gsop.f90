@@ -153,6 +153,12 @@ PROGRAM cdfmht_gsop
   npk   = getdim (cf_vfil,cn_z)
   npt   = getdim (cf_vfil,cn_t)
 
+  ! sanity check on npt
+  IF (npt > 1) THEN
+     PRINT *, 'E R R O R npt > 1 not yet coded, STOP'
+     STOP 99
+  END IF
+
   ! Detects newmaskglo file modif Alb 29/11/08 pour MERA
   INQUIRE( FILE=cn_fbasins, EXIST=llglo )
   IF (llglo) THEN ; nbasins = 5
