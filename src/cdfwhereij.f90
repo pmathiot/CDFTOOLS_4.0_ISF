@@ -49,7 +49,8 @@ PROGRAM cdfwhereij
 
   narg= iargc()
   IF ( narg == 0 ) THEN
-     PRINT *,' usage : cdfwhereij  -w imin imax jmin jmax [-c COOR-file] [-p C-type]'
+     PRINT *,' usage : cdfwhereij  [-w imin imax jmin jmax] [-l section-file]' 
+     PRINT *,'                ...  [-c COOR-file] [-p C-type] [-o output-section-name]'
      PRINT *,'      '
      PRINT *,'     PURPOSE :'
      PRINT *,'       Return the geographical coordinates of a model sub-area specified' 
