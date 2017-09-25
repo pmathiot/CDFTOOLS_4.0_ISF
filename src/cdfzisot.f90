@@ -44,6 +44,7 @@ PROGRAM cdfzisot
   REAL(KIND=4), DIMENSION(:,:),    ALLOCATABLE :: rzisot         ! depth of the isotherm
   REAL(KIND=4), DIMENSION(:,:),    ALLOCATABLE :: rzisotup       ! depth of the isotherm above
   !                                                              ! in case of inversion
+  REAL(KIND=4), DIMENSION(:,:,:),  ALLOCATABLE :: rtem3d        ! 3d temperature
 
   REAL(KIND=8), DIMENSION(:),      ALLOCATABLE :: dtim           ! time counter
 
@@ -54,12 +55,13 @@ PROGRAM cdfzisot
   TYPE(variable), DIMENSION(pnvarout)          :: stypvar        ! structure for output var. attributes
 
   LOGICAL                                      :: lnc4 = .FALSE.  ! Use nc4 with chunking and deflation
+  LOGICAL                                      :: l3d  = .FALSE.  ! load full 3d variable in memory
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
 
   narg = iargc()
   IF ( narg == 0 ) THEN
-     PRINT *,' usage : cdfzisot -t T-file -iso ISO-temp [-o OUT-file] [-nc4]'
+     PRINT *,' usage : cdfzisot -t T-file -iso ISO-temp [-o OUT-file] [-nc4] [-3d]'
      PRINT *,'      '
      PRINT *,'     PURPOSE :'
      PRINT *,'       Compute the depth of an isotherm surface from the temperature file'
@@ -75,6 +77,9 @@ PROGRAM cdfzisot
      PRINT *,'        [-nc4]  : Use netcdf4 output with chunking and deflation level 1.'
      PRINT *,'             This option is effective only if cdftools are compiled with'
      PRINT *,'             a netcdf library supporting chunking and deflation.'
+     PRINT *,'        [-3d]   : Read temperature variable as 3d ionstead of xz slice '
+     PRINT *,'                  ( depending of the chunking pattern of the file '
+     PRINT *,'                  it could speed up a lot the tool if your machine memory is big enough)'
      PRINT *,'      '
      PRINT *,'     REQUIRED FILES :'
      PRINT *,'        ',TRIM(cn_fzgr)
@@ -94,7 +99,8 @@ PROGRAM cdfzisot
      CASE ( '-iso') ; CALL getarg (ijarg, cldum  ) ; ijarg=ijarg+1 ; READ(cldum,*) rtref
         ! options
      CASE ( '-o'  ) ; CALL getarg (ijarg, cf_out ) ; ijarg=ijarg+1
-     CASE ( '-nc4') ; lnc4 = .TRUE.
+     CASE ( '-nc4') ; lnc4 = .TRUE. ; ijarg=ijarg+1
+     CASE ( '-3d' ) ; l3d  = .TRUE. ; ijarg=ijarg+1
      CASE DEFAULT   ; PRINT *,' ERROR : ',TRIM(cldum),' : unknown option.' ; STOP 99
      END SELECT
   ENDDO
@@ -112,6 +118,7 @@ PROGRAM cdfzisot
   ALLOCATE (tmask(npiglo,npjglo), glam(npiglo,npjglo), gphi(npiglo,npjglo) )
   ALLOCATE (rzisot(npiglo,npjglo) , rzisotup(npiglo,npjglo) )
   ALLOCATE (mbathy(npiglo,npjglo) )
+  ALLOCATE (rtem3d(npiglo,npjglo,npk))
 
   ! read metrics gdept and gdepw
   gdept(:)    = getvare3(cn_fzgr, cn_gdept, npk )
@@ -137,10 +144,20 @@ PROGRAM cdfzisot
 
   CALL CreateOutput
 
+  IF (l3d) rtem3d=getvar3d(cf_tfil, cn_votemper, npiglo, npjglo, npk)
+
   DO jt=1,npt
      DO jj = 1 , npjglo
+        IF (MOD(jj,100) == 0) PRINT *, jj,'/',npjglo
+
         ! read temperature on x-z slab
-        rtemxz(:,:) = getvarxz(cf_tfil, cn_votemper, jj, npiglo, npk, kimin=1, kkmin=1, ktime=jt )
+        rtemxz(:,:) = rtem3d(:,jj,:) !getvarxz(cf_tfil, cn_votemper, jj, npiglo, npk, kimin=1, kkmin=1, ktime=jt )
+        IF (l3d) THEN
+           rtemxz(:,:) = rtem3d(:,jj,:) !getvarxz(cf_tfil, cn_votemper, jj, npiglo, npk, kimin=1, kkmin=1, ktime=jt )
+        ELSE
+           rtemxz(:,:) = getvarxz(cf_tfil, cn_votemper, jj, npiglo, npk, kimin=1, kkmin=1, ktime=jt )
+        END IF
+
         DO ji = 1, npiglo
            IF ( tmask(ji,jj) == 1 ) THEN
               IF ( COUNT( rtemxz(ji,:)>=rtref .AND. rtemxz(ji,:) .NE.rmisval ) > 0 ) THEN
