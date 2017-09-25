@@ -234,9 +234,9 @@ CONTAINS
     rdep(1) = 0.
     ipk(:)                    = 1
     stypvar(1)%ichunk         = (/npiglo,MAX(1,npjglo/30),1,1 /)
-    stypvar(1)%cname          = 'zisot'//TRIM(cldum)
+    stypvar(1)%cname          = 'zisot'
     stypvar(2)%ichunk         = (/npiglo,MAX(1,npjglo/30),1,1 /)
-    stypvar(2)%cname          = 'zisotup'//TRIM(cldum)
+    stypvar(2)%cname          = 'zisotup'
     stypvar%cunits            = 'm'
     stypvar%rmissing_value    = 32767.
     stypvar%valid_min         = 0.
