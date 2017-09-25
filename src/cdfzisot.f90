@@ -77,7 +77,7 @@ PROGRAM cdfzisot
      PRINT *,'        [-nc4]  : Use netcdf4 output with chunking and deflation level 1.'
      PRINT *,'             This option is effective only if cdftools are compiled with'
      PRINT *,'             a netcdf library supporting chunking and deflation.'
-     PRINT *,'        [-3d]   : Read temperature variable as 3d ionstead of xz slice '
+     PRINT *,'        [-l3d]  : Read temperature variable as 3d ionstead of xz slice '
      PRINT *,'                  ( depending of the chunking pattern of the file '
      PRINT *,'                  it could speed up a lot the tool if your machine memory is big enough)'
      PRINT *,'      '
@@ -99,8 +99,8 @@ PROGRAM cdfzisot
      CASE ( '-iso') ; CALL getarg (ijarg, cldum  ) ; ijarg=ijarg+1 ; READ(cldum,*) rtref
         ! options
      CASE ( '-o'  ) ; CALL getarg (ijarg, cf_out ) ; ijarg=ijarg+1
-     CASE ( '-nc4') ; lnc4 = .TRUE. ; ijarg=ijarg+1
-     CASE ( '-3d' ) ; l3d  = .TRUE. ; ijarg=ijarg+1
+     CASE ( '-nc4') ; lnc4 = .TRUE. 
+     CASE ( '-l3d') ; l3d  = .TRUE. 
      CASE DEFAULT   ; PRINT *,' ERROR : ',TRIM(cldum),' : unknown option.' ; STOP 99
      END SELECT
   ENDDO
@@ -143,8 +143,10 @@ PROGRAM cdfzisot
   rzisotup = 0. ; WHERE ( rtem == rmisval ) rzisotup = rmisval
 
   CALL CreateOutput
-
-  IF (l3d) rtem3d=getvar3d(cf_tfil, cn_votemper, npiglo, npjglo, npk)
+  
+  IF (l3d) THEN
+     rtem3d=getvar3d(cf_tfil, cn_votemper, npiglo, npjglo, npk)
+  END IF
 
   DO jt=1,npt
      DO jj = 1 , npjglo
