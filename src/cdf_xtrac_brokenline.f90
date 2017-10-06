@@ -425,16 +425,11 @@ PROGRAM cdf_xtract_brokenline
      ! loop on the legs
      DO jleg = 1, nsta(jsec)-1
 
-        dl_xmin = rlonsta(jleg,  jsec) *1.d0
-        dl_ymin = rlatsta(jleg,  jsec) *1.d0
-        dl_xmax = rlonsta(jleg+1,jsec) *1.d0
-        dl_ymax = rlatsta(jleg+1,jsec) *1.d0
         ! also need xmin xmax ymin ymax in single precision for cdf_findij
         xmin = rlonsta(jleg,  jsec)
         ymin = rlatsta(jleg,  jsec)
         xmax = rlonsta(jleg+1,jsec)
         ymax = rlatsta(jleg+1,jsec)
-
 
         ! return ending points of a leg in I J model coordinates
         PRINT *,TRIM(csection(jsec)),' leg ',jleg
@@ -511,8 +506,7 @@ PROGRAM cdf_xtract_brokenline
   ! 3. : Extraction along the legs
   ! ------------------------------
 
-  e1vsec = -9999.
-  e2usec = -9999.
+  e1vsec = -9999. ; e2usec = -9999. ; e3usec = -9999. ; e3vsec = -9999. ;
 
   risec(:,:) = 0.
   rjsec(:,:) = 0.
@@ -632,8 +626,8 @@ PROGRAM cdf_xtract_brokenline
            uzonal(:,:) = getvar(cf_ufil, cn_vozocrtx, jk, npiglo, npjglo, ktime = jt)
            vmerid(:,:) = getvar(cf_vfil, cn_vomecrty, jk, npiglo, npjglo, ktime = jt)
         ELSE
-           uzonal(:,:) = 0.0
-           vmerid(:,:) = 0.0
+           uzonal(:,:) = rspval
+           vmerid(:,:) = rspval
         END IF
 
         IF ( lvecrot ) THEN
@@ -651,16 +645,6 @@ PROGRAM cdf_xtract_brokenline
                  vmerida(ji,jj)=0.5*(vmerid(ji,jj-1) + vmerid(ji,jj))
               END DO
            END DO
-
-           !Get alfa for the current section
-           angle= heading (dl_xmin,  dl_xmax,  dl_ymin, dl_ymax )
-           pi      = ACOS(-1.)
-           angle = angled*pi/180.
-           alfa  = angle - pi/2.
-           !We rotate the velocities according to the angle in the section
-
-           urot = uzonala * COS(alfa) - vmerida * SIN(alfa)
-           vrot = uzonala * SIN(alfa) + vmerida * COS(alfa)
         ENDIF
 
         ! save upper layer thicness, used to compute depht of w points
@@ -688,6 +672,31 @@ PROGRAM cdf_xtract_brokenline
         ENDIF
 
         DO jsec = 1, nfiles  ! section loop at level jk
+
+           IF ( lvecrot ) THEN
+              ! compute heading of each section
+              !DO jleg = 1, nsta(jsec)-1
+              jleg=1
+              ! 
+              dl_xmin = rlonsta(jleg,  jsec) *1.d0
+              dl_ymin = rlatsta(jleg,  jsec) *1.d0
+              dl_xmax = rlonsta(jleg+1,jsec) *1.d0
+              dl_ymax = rlatsta(jleg+1,jsec) *1.d0
+   
+              !Get alfa for the current section
+              angle= heading (dl_xmin,  dl_xmax,  dl_ymin, dl_ymax )
+              PRINT *, 'HEADING = ',angle,MAXVAL(uzonala),MAXVAL(vmerida)
+              pi    = ACOS(-1.)
+              angle = angle * pi/180.
+              alfa  = angle - pi/2.
+              !We rotate the velocities according to the angle in the section
+               
+              urot = uzonala * COS(alfa) - vmerida * SIN(alfa)
+              vrot = uzonala * SIN(alfa) + vmerida * COS(alfa)
+              PRINT *, 'ROT = ',angle,MAXVAL(urot),MAXVAL(vrot)
+              !END DO
+           END IF
+
            DO jipt=1,npsec(jsec)-1
               ii  = iisec(jipt  ,jsec) ; ij  = ijsec(jipt  ,jsec)  ! F point  position
               ii1 = iisec(jipt+1,jsec) ; ij1 = ijsec(jipt+1,jsec)  ! Next F point position
@@ -697,15 +706,15 @@ PROGRAM cdf_xtract_brokenline
                  IF ( ii1 > ii ) THEN ! eastward
 
                     IF ( MIN( saline(ii+1,ij) , saline(ii+1,ij+1))  == 0. ) THEN
-                       tempersec(jipt,jk) = 0. ; salinesec(jipt,jk) = 0.
-                       IF ( ll_ssh ) sshsec(jipt,jk) = 0.
-                       IF ( ll_mld ) rmldsec(jipt,jk) = 0.
-                       IF ( ll_ice ) ricethicksec(jipt,jk) = 0.
-                       IF ( ll_ice ) ricefrasec(jipt,jk) = 0.
+                       tempersec(jipt,jk) = rspval ; salinesec(jipt,jk) = rspval
+                       IF ( ll_ssh ) sshsec(jipt,jk) = rspval
+                       IF ( ll_mld ) rmldsec(jipt,jk) = rspval
+                       IF ( ll_ice ) ricethicksec(jipt,jk) = rspval
+                       IF ( ll_ice ) ricefrasec(jipt,jk) = rspval
 
                        IF ( lvecrot ) THEN
-                          urotsec(jipt,jk) = 0.
-                          vrotsec(jipt,jk) = 0.
+                          urotsec(jipt,jk) = rspval
+                          vrotsec(jipt,jk) = rspval
                        ENDIF
                     ELSE
                        tempersec(jipt,jk) = 0.5 * ( temper(ii+1,ij) + temper(ii+1,ij+1) )
@@ -731,15 +740,15 @@ PROGRAM cdf_xtract_brokenline
                  ELSE ! westward
 
                     IF ( MIN( saline(ii,ij) , saline(ii,ij+1) ) == 0. ) THEN
-                       tempersec(jipt,jk) = 0. ; salinesec(jipt,jk) = 0.
-                       IF ( ll_ssh ) sshsec (jipt,jk) = 0.
-                       IF ( ll_mld ) rmldsec(jipt,jk) = 0.
-                       IF ( ll_ice ) ricethicksec(jipt,jk) = 0.
-                       IF ( ll_ice ) ricefrasec(jipt,jk) = 0.
+                       tempersec(jipt,jk) = rspval ; salinesec(jipt,jk) = rspval
+                       IF ( ll_ssh ) sshsec (jipt,jk) = rspval
+                       IF ( ll_mld ) rmldsec(jipt,jk) = rspval
+                       IF ( ll_ice ) ricethicksec(jipt,jk) = rspval
+                       IF ( ll_ice ) ricefrasec(jipt,jk) = rspval
 
                        IF ( lvecrot ) THEN
-                          urotsec(jipt,jk) = 0.
-                          vrotsec(jipt,jk) = 0.
+                          urotsec(jipt,jk) = rspval
+                          vrotsec(jipt,jk) = rspval
                        ENDIF
                     ELSE
                        tempersec(jipt,jk) = 0.5 * ( temper(ii,ij) + temper(ii,ij+1) )
@@ -768,15 +777,15 @@ PROGRAM cdf_xtract_brokenline
                  IF ( ij1 < ij ) THEN ! southward
 
                     IF ( MIN( saline(ii,ij) , saline(ii+1,ij) ) == 0. ) THEN
-                       tempersec(jipt,jk) = 0. ; salinesec(jipt,jk) = 0.
-                       IF ( ll_ssh ) sshsec (jipt,jk) = 0.
-                       IF ( ll_mld ) rmldsec(jipt,jk) = 0.
-                       IF ( ll_ice ) ricethicksec(jipt,jk) = 0.
-                       IF ( ll_ice ) ricefrasec(jipt,jk) = 0.
+                       tempersec(jipt,jk) = rspval ; salinesec(jipt,jk) = rspval
+                       IF ( ll_ssh ) sshsec (jipt,jk) = rspval
+                       IF ( ll_mld ) rmldsec(jipt,jk) = rspval
+                       IF ( ll_ice ) ricethicksec(jipt,jk) = rspval
+                       IF ( ll_ice ) ricefrasec(jipt,jk) = rspval
 
                        IF ( lvecrot ) THEN
-                          urotsec(jipt,jk) = 0.
-                          vrotsec(jipt,jk) = 0.
+                          urotsec(jipt,jk) = rspval
+                          vrotsec(jipt,jk) = rspval
                        ENDIF
                     ELSE
                        tempersec(jipt,jk) = 0.5 * ( temper(ii,ij) + temper(ii+1,ij) )
@@ -802,15 +811,15 @@ PROGRAM cdf_xtract_brokenline
                  ELSE ! northward
 
                     IF ( MIN( saline(ii,ij+1) , saline(ii+1,ij+1) ) == 0. ) THEN
-                       tempersec(jipt,jk) = 0. ; salinesec(jipt,jk) = 0.
-                       IF ( ll_ssh ) sshsec (jipt,jk) = 0.
-                       IF ( ll_mld ) rmldsec(jipt,jk) = 0.
-                       IF ( ll_ice ) ricethicksec(jipt,jk) = 0.
-                       IF ( ll_ice ) ricefrasec(jipt,jk) = 0.
+                       tempersec(jipt,jk) = rspval ; salinesec(jipt,jk) = rspval
+                       IF ( ll_ssh ) sshsec (jipt,jk) = rspval
+                       IF ( ll_mld ) rmldsec(jipt,jk) = rspval
+                       IF ( ll_ice ) ricethicksec(jipt,jk) = rspval
+                       IF ( ll_ice ) ricefrasec(jipt,jk) = rspval
 
                        IF ( lvecrot ) THEN
-                          urotsec(jipt,jk) = 0.
-                          vrotsec(jipt,jk) = 0.
+                          urotsec(jipt,jk) = rspval
+                          vrotsec(jipt,jk) = rspval
                        ENDIF
                     ELSE
                        tempersec(jipt,jk) = 0.5 * ( temper(ii,ij+1) + temper(ii+1,ij+1) )
@@ -841,8 +850,7 @@ PROGRAM cdf_xtract_brokenline
                  EXIT 
               ENDIF
 
-              ! cumulate transport for barotropic calculation
-              dtmp=1.d0* (uzonalsec(jipt,jk) + vmeridsec(jipt,jk))*    &
+              dtmp=1.d0* (uzonalsec(jipt,jk) + vmeridsec(jipt,jk))*     &
                    &   (e2usec(jipt,1,jsec )+ e1vsec(jipt,1,jsec ))*    &
                    &   (e3usec(jipt,jk)+ e3vsec(jipt,jk))
               dbarot(jsec)=dbarot(jsec)+dtmp
@@ -875,7 +883,6 @@ PROGRAM cdf_xtract_brokenline
               ! save a mask of the section
               vmasksec(:,:) = 1.
               WHERE( salinesec(:,:) == 0. ) vmasksec(:,:) = 0.
-
               ierr = putvar (ncout(jsec), id_varout(np_e3un), e3usec(:,jk),                jk, npsec(jsec)-1, 1 )
               ierr = putvar (ncout(jsec), id_varout(np_e3vn), e3vsec(:,jk),                jk, npsec(jsec)-1, 1 )
               ierr = putvar (ncout(jsec), id_varout(np_e3v ), e3usec(:,jk)+e3vsec(:,jk),   jk, npsec(jsec)-1, 1 )
