@@ -45,6 +45,7 @@ PROGRAM cdfmkmask
   REAL(KIND=4)                              :: rlonmin, rlonmax         ! limit in longitude
   REAL(KIND=4)                              :: rlatmin, rlatmax         ! limit in latitude
   REAL(KIND=4)                              :: rbatmin, rbatmax         ! limit in latitude
+  REAL(KIND=4)                              :: rlonpts, rlatpts         ! seed point for lfilllonlat
   REAL(KIND=4)                              :: rvarmin, rvarmax         ! limit in variable
   REAL(KIND=4), DIMENSION(:)  , ALLOCATABLE :: rdep                     ! depth 
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: tmask, zmask, ssmask     ! 2D masks at current level and non depth and time dependent mask
@@ -67,7 +68,9 @@ PROGRAM cdfmkmask
   LOGICAL                                   :: lzoombat = .FALSE.       ! zoom flag bat
   LOGICAL                                   :: lzoomvar = .FALSE.       ! zoom flag var
   LOGICAL                                   :: lfill    = .FALSE.       ! flood fill algo flag    
+  LOGICAL                                   :: lfilllonlat = .FALSE.    ! flood fill algo flag    
   LOGICAL                                   :: lboundf  = .FALSE.       ! section flag var
+  LOGICAL                                   :: lboundflonlat = .FALSE.  ! section flag var
   LOGICAL                                   :: ltime    = .FALSE.       ! time flag    
   LOGICAL                                   :: lmbathy  = .FALSE.       ! mbathy flag    
   LOGICAL                                   :: l2dmask  = .FALSE.       ! 2d mask flag
@@ -81,7 +84,8 @@ PROGRAM cdfmkmask
      PRINT *,'                   ... [-zoombat bathymin bathymax]  ...'
      PRINT *,'                   ... [-zoomvar varname varmin varmax]  ...'
      PRINT *,'                   ... [-fill iipoint jjpoint] ...'
-     PRINT *,'                   ... [-bf txt_file] ...'
+     PRINT *,'                   ... [-bfij txt_file] ...'
+     PRINT *,'                   ... [-bflatlon txt_file] ...'
      PRINT *,'                   ... [-time ] [-o OUT-file]'
      PRINT *,'      '
      PRINT *,'     PURPOSE :'
@@ -119,11 +123,18 @@ PROGRAM cdfmkmask
      PRINT *,'                        this area, the mask is set to 0.'
      PRINT *,'       [-fill iipoint jjpoint] : mask everything except the cells into the'
      PRINT *,'                        non mask area where the point (iipoint,jjpoint) is.'
+     PRINT *,'       [-filllonlat lon lat] : mask everything except the cells into the'
+     PRINT *,'                        non mask area where the point (lon,lat) is.'
+     PRINT *,'       [-bf txtfile] : txt file describing the section used in -fill'
      PRINT *,'                        Extra boundary could be set up in boundary.txt.'
      PRINT *,'                        Format of the file is on each line : '
      PRINT *,'                        NAME /n iimin iimax jjmin jjmax linc.'
      PRINT *,'                        Section is exclude from the selection if linc=F .'
-     PRINT *,'       [-bf txtfile] : txt file describing the section used in -fill'
+     PRINT *,'       [-bflonlat txtfile] : txt file describing the section used in -fill'
+     PRINT *,'                        Extra boundary could be set up in boundary.txt.'
+     PRINT *,'                        Format of the file is on each line : '
+     PRINT *,'                        NAME /n lonmin lonmax latmin latmax linc.'
+     PRINT *,'                        Section is exclude from the selection if linc=F .'
      PRINT *,'       [-time ] : If further time step is available'
      PRINT *,'                        a mask for each time step is done'
      PRINT *,'       [-o OUT-file ] : output file name to be used in place of standard'
@@ -176,8 +187,15 @@ PROGRAM cdfmkmask
         lfill = .true.
         CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) iipts
         CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) ijpts
+     CASE ( '-filllonlat' )  ! read a seed point and a boundary file
+        lfilllonlat = .true.
+        CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) rlonpts
+        CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) rlatpts
      CASE ( '-bf' )    ! read boundary file name
         lboundf=.TRUE.
+        CALL getarg (ijarg, cf_boundary) ; ijarg = ijarg + 1
+     CASE ( '-bflonlat' )    ! read boundary file name
+        lboundflonlat=.TRUE.
         CALL getarg (ijarg, cf_boundary) ; ijarg = ijarg + 1
      CASE ( '-time' )  ! create a mask for each time step of the file
         ltime=.TRUE.
@@ -187,6 +205,13 @@ PROGRAM cdfmkmask
      CASE DEFAULT  ; PRINT *, ' ERROR : ',TRIM(cldum),' : unknown option.' ; STOP 99
      END SELECT
   ENDDO
+
+  IF ( lfill .AND. lfilllonlat ) THEN
+     PRINT *, 'E R R O R: 2 seeds for the filling specified (-fill and -filllonlat), STOP'; STOP 99
+  END IF
+  IF ( lboundf .AND. lboundflonlat ) THEN
+     PRINT *, 'E R R O R: 2 boundary files for the filling specified (-bf and -bflonlat), STOP'; STOP 99
+  END IF
 
   IF ( lzoom .AND. lzoomij ) PRINT *, 'WARNING 2 spatial condition for mask'
 
@@ -267,7 +292,7 @@ PROGRAM cdfmkmask
   IF ( lzoombat ) THEN
      IF ( chkfile(cn_fzgr) ) STOP 99 ! missing file
      ALLOCATE ( rbat  (npiglo,npjglo) )
-     rbat(:,:)= getvar(cn_fzgr, cn_hdepw,  1 ,npiglo, npjglo)
+     rbat(:,:)= getvar(cn_fbathymet, cn_bathymet,  1 ,npiglo, npjglo)
      WHERE (rbat < rbatmin .OR. rbat > rbatmax) ssmask = 0
   ENDIF
 
@@ -316,8 +341,8 @@ PROGRAM cdfmkmask
         ENDIF
 
         !! fill constrain
-        IF ( lfill ) THEN
-           CALL FillMask(tmask,iipts,ijpts)
+        IF ( lfill .OR. lfilllonlat ) THEN
+           CALL FillMask(tmask,iipts,ijpts,rlonpts,rlatpts)
         ENDIF
  
         !! write t- u- v- mask
@@ -356,14 +381,16 @@ PROGRAM cdfmkmask
 
 CONTAINS
 
-  SUBROUTINE FillMask(rmask, iipts, ijpts)
-    INTEGER, INTENT(in) :: iipts, ijpts ! seeding point coordinates
+  SUBROUTINE FillMask(rmask, iipts, ijpts, rlonpts, rlatpts)
+    INTEGER(KIND=4), INTENT(inout) :: iipts, ijpts ! seeding point coordinates
     INTEGER(KIND=2), DIMENSION(:,:), ALLOCATABLE :: imask
     INTEGER(KIND=4), PARAMETER                   :: jseg=10000   ! dummy loop index
     INTEGER(KIND=4)                              :: ipos           ! working integer (position of ' ' in strings)
     INTEGER(KIND=4)                              :: ii, jk         ! working integer
     INTEGER(KIND=4)                              :: iunit=10
 
+    REAL(KIND=4)                                 :: zlonmin, zlonmax, zlatmin, zlatmax
+    REAL(KIND=4),  INTENT(in)                    :: rlonpts, rlatpts
     REAL(KIND=4), DIMENSION(:,:), INTENT(inout)  :: rmask
     REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE    :: rmskline
     REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE    :: rmsk_bck
@@ -384,7 +411,7 @@ CONTAINS
     rmskline(:,:) = 0.0
     rmsk_bck = rmask
 
-    IF (lboundf) THEN
+    IF (lboundf .OR. lboundflonlat) THEN
        PRINT *,''
        PRINT *,'Boundary file: ',TRIM(cf_boundary),' is used to close the basin'
        PRINT *,''
@@ -402,7 +429,13 @@ CONTAINS
              lsection = .FALSE.
           ELSE
              ! read section coordinates
-             READ(iunit,*) iimin, iimax, ijmin, ijmax, linc
+             IF (lboundflonlat) THEN
+                READ(iunit,*) zlonmin, zlonmax, zlatmin, zlatmax, linc
+                CALL cdf_findij ( zlonmin, zlonmax, zlatmin, zlatmax, iimin, iimax, ijmin, ijmax, &
+             &            cd_coord=cn_fhgr, cd_point='T', cd_verbose='T')
+             ELSE
+                READ(iunit,*) iimin, iimax, ijmin, ijmax, linc
+             ENDIF
 
              ! get index of cell included into the section
              CALL broken_line(iimin, iimax, ijmin, ijmax, rxx, ryy, npt, npiglo, npjglo)
@@ -422,6 +455,11 @@ CONTAINS
     END IF
 
     ! fill area
+    ! find ij if lon/lat given
+    IF (lfilllonlat) THEN
+       CALL cdf_findij ( rlonpts, rlonpts, rlatpts, rlatpts, iipts, iipts, ijpts, ijpts, &
+             &            cd_coord=cn_fhgr, cd_point='T', cd_verbose='F')   
+    ENDIF
     imask = NINT(rmask,2)
     CALL FillPool2D(iipts, ijpts, imask, -1) ! fill pool (use -1 to flag the
                                              ! area and avoid infinit loop in the algo
