@@ -135,7 +135,8 @@ PROGRAM cdf_xtract_brokenline
   LOGICAL  :: lvt      = .FALSE.                    ! flag for saving products vt, vs
   LOGICAL  :: ll_ssh, ll_mld, ll_ice                ! working flag for jk =1
   LOGICAL  :: lvecrot  = .FALSE.                    ! flag for saving mld
-  REAL(KIND=4)                                    :: angled, angle, alfa, pi
+  REAL(KIND=4)                                    :: angle, pi
+  REAL(KIND=4), DIMENSION(:),   ALLOCATABLE       :: alfa
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE       :: uzonala, vmerida, urot, vrot
   INTEGER(KIND=4)                                 :: ji, jj 
   REAL(KIND=4), DIMENSION(:,:),   ALLOCATABLE :: urotsec, vrotsec
@@ -353,6 +354,7 @@ PROGRAM cdf_xtract_brokenline
      ALLOCATE ( iista(nstamax,nfiles), ijsta(nstamax,nfiles), ikeepn(nstamax -1,nfiles )  )
      ALLOCATE ( npsec(nfiles) )
      ALLOCATE ( rlonsta(nstamax,nfiles), rlatsta(nstamax,nfiles) )
+     ALLOCATE ( alfa(nfiles) )
 
      DO jsec =1, nfiles
         OPEN(numin, file=cf_lst(jsec) )
@@ -425,6 +427,26 @@ PROGRAM cdf_xtract_brokenline
      ! loop on the legs
      DO jleg = 1, nsta(jsec)-1
 
+        IF ( lvecrot ) THEN 
+           ! compute heading of each section
+           IF ( nsta(jsec) > 2 ) THEN 
+              PRINT *, 'lvecrot is not compatible with multi leg section yest, STOP'
+              STOP 99
+           END IF
+           !DO jleg = 1, nsta(jsec)-1
+           ! 
+           dl_xmin = rlonsta(jleg,  jsec) *1.d0
+           dl_ymin = rlatsta(jleg,  jsec) *1.d0
+           dl_xmax = rlonsta(jleg+1,jsec) *1.d0
+           dl_ymax = rlatsta(jleg+1,jsec) *1.d0
+
+           !Get alfa for the current section
+           angle= heading (dl_xmin,  dl_xmax,  dl_ymin, dl_ymax )
+           pi    = ACOS(-1.)
+           angle = angle * pi/180.
+           alfa(jsec)  = angle - pi/2.
+           PRINT *, 'HEADING = ',angle,alfa(jsec)
+        END IF
         ! also need xmin xmax ymin ymax in single precision for cdf_findij
         xmin = rlonsta(jleg,  jsec)
         ymin = rlatsta(jleg,  jsec)
@@ -618,7 +640,6 @@ PROGRAM cdf_xtract_brokenline
      IF ( lice ) ricefra(:,:)   = getvar(cf_ifil, cv_ileadfra, 1, npiglo, npjglo, ktime = jt)
 
      DO jk=1,npk   ! level loop , read only once the horizontal slab
-        PRINT *,jk
         temper(:,:) = getvar(cf_tfil, cn_votemper, jk, npiglo, npjglo, ktime = jt)
         saline(:,:) = getvar(cf_tfil, cn_vosaline, jk, npiglo, npjglo, ktime = jt)
 
@@ -674,27 +695,8 @@ PROGRAM cdf_xtract_brokenline
         DO jsec = 1, nfiles  ! section loop at level jk
 
            IF ( lvecrot ) THEN
-              ! compute heading of each section
-              !DO jleg = 1, nsta(jsec)-1
-              jleg=1
-              ! 
-              dl_xmin = rlonsta(jleg,  jsec) *1.d0
-              dl_ymin = rlatsta(jleg,  jsec) *1.d0
-              dl_xmax = rlonsta(jleg+1,jsec) *1.d0
-              dl_ymax = rlatsta(jleg+1,jsec) *1.d0
-   
-              !Get alfa for the current section
-              angle= heading (dl_xmin,  dl_xmax,  dl_ymin, dl_ymax )
-              PRINT *, 'HEADING = ',angle,MAXVAL(uzonala),MAXVAL(vmerida)
-              pi    = ACOS(-1.)
-              angle = angle * pi/180.
-              alfa  = angle - pi/2.
-              !We rotate the velocities according to the angle in the section
-               
-              urot = uzonala * COS(alfa) - vmerida * SIN(alfa)
-              vrot = uzonala * SIN(alfa) + vmerida * COS(alfa)
-              PRINT *, 'ROT = ',angle,MAXVAL(urot),MAXVAL(vrot)
-              !END DO
+              urot = uzonala * COS(alfa(jsec)) - vmerida * SIN(alfa(jsec))
+              vrot = uzonala * SIN(alfa(jsec)) + vmerida * COS(alfa(jsec))
            END IF
 
            DO jipt=1,npsec(jsec)-1
