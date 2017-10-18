@@ -440,12 +440,16 @@ PROGRAM cdf_xtract_brokenline
            dl_xmax = rlonsta(jleg+1,jsec) *1.d0
            dl_ymax = rlatsta(jleg+1,jsec) *1.d0
 
-           !Get alfa for the current section
+           !Get alfa for the current section 
+           !heading 90.0 = toward east direction, need to change the sign
+           !as alfa > 0 in anti-clokwise direction
+           !vnorm > 0 on the right as for the transport calculation
            angle= heading (dl_xmin,  dl_xmax,  dl_ymin, dl_ymax )
+           PRINT *, 'HEADING = ',angle
            pi    = ACOS(-1.)
            angle = angle * pi/180.
-           alfa(jsec)  = angle - pi/2.
-           PRINT *, 'HEADING = ',angle,alfa(jsec)
+           !alfa(jsec)  = angle - pi/2.
+           alfa(jsec)  = - angle
         END IF
         ! also need xmin xmax ymin ymax in single precision for cdf_findij
         xmin = rlonsta(jleg,  jsec)
@@ -695,8 +699,12 @@ PROGRAM cdf_xtract_brokenline
         DO jsec = 1, nfiles  ! section loop at level jk
 
            IF ( lvecrot ) THEN
-              urot = uzonala * COS(alfa(jsec)) - vmerida * SIN(alfa(jsec))
-              vrot = uzonala * SIN(alfa(jsec)) + vmerida * COS(alfa(jsec))
+!              urot = uzonala * COS(alfa(jsec)) - vmerida * SIN(alfa(jsec))
+!              vrot = uzonala * SIN(alfa(jsec)) + vmerida * COS(alfa(jsec))
+! general formula for axe rotation (alfa > 0 anticlokwise):
+! urot = vtangent (positive toward the end of the section) and vrot = vnormal (>0 on the right)
+              urot = - uzonala * SIN(alfa(jsec)) + vmerida * COS(alfa(jsec))
+              vrot =   uzonala * COS(alfa(jsec)) + vmerida * SIN(alfa(jsec))
            END IF
 
            DO jipt=1,npsec(jsec)-1
