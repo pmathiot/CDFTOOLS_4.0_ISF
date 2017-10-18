@@ -1506,6 +1506,7 @@ CONTAINS
     IF (lsf )  WHERE (getvar3d /= spval )  getvar3d=getvar3d*sf
     IF (lao )  WHERE (getvar3d /= spval )  getvar3d=getvar3d + ao
     IF (llog)  WHERE (getvar3d /= spval )  getvar3d=10**getvar3d
+    WHERE (getvar3d == spval )  getvar3d=0.0
 
     istatus=NF90_CLOSE(incid)
 
@@ -1611,6 +1612,7 @@ CONTAINS
     IF (lsf )  WHERE (getvar3dt /= spval )  getvar3dt=getvar3dt*sf
     IF (lao )  WHERE (getvar3dt /= spval )  getvar3dt=getvar3dt + ao
     IF (llog)  WHERE (getvar3dt /= spval )  getvar3dt=10**getvar3dt
+    WHERE (getvar3dt == spval )  getvar3dt=0.0
 
     istatus=NF90_CLOSE(incid)
 
@@ -1721,6 +1723,7 @@ CONTAINS
     IF (lsf )  WHERE (getvar4d /= spval )  getvar4d=getvar4d*sf
     IF (lao )  WHERE (getvar4d /= spval )  getvar4d=getvar4d + ao
     IF (llog)  WHERE (getvar4d /= spval )  getvar4d=10**getvar4d
+    WHERE (getvar4d == spval )  getvar4d=0.0
 
     istatus=NF90_CLOSE(incid)
 
@@ -1825,6 +1828,7 @@ CONTAINS
     IF (lsf )  WHERE (getvarxz /= spval )  getvarxz=getvarxz*sf
     IF (lao )  WHERE (getvarxz /= spval )  getvarxz=getvarxz + ao
     IF (llog)  WHERE (getvarxz /= spval )  getvarxz=10**getvarxz
+    WHERE (getvarxz == spval )  getvarxz=0.0
 
     istatus=NF90_CLOSE(incid)
 
@@ -1956,7 +1960,7 @@ CONTAINS
     !!-------------------------------------------------------------------------
     istart(:) = 1
     icount(1)=kk
-    IF ( PRESENT(kstatus) ) kstatus = 0
+    IF ( PRESENT(kstatus) ) kstatus = NF90_NOERR
 
     istatus=NF90_OPEN(cdfile,NF90_NOWRITE,incid)
     istatus=NF90_INQ_VARID ( incid,cdvar,id_var)
@@ -2177,7 +2181,7 @@ CONTAINS
                 IF ( idep == NF90_NOERR )  EXIT
              END DO
              IF (jj == jpdep +1 ) THEN
-                PRINT *,' No depth variable found in ', TRIM(cdfile)
+                PRINT *,' No depth variable ( ',TRIM(cldep),' ) found in ', TRIM(cdfile)
                 STOP 98
              ENDIF
           ENDIF
@@ -2839,7 +2843,6 @@ CONTAINS
 
     IF ( TRIM(cd_file) /= 'none')  THEN 
        INQUIRE (file = TRIM(cd_file), EXIST=ll_exist)
-
        IF (ll_exist) THEN
           chkfile = .false.
           IF ( cd_file == cn_fzgr ) ierr = SetMeshZgrVersion ( ll_verbose )
