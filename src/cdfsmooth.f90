@@ -369,10 +369,6 @@ CONTAINS
     ! and the other 
     dec2d(0,1) = 1.d0 ;  dec2d(2,1) = 1.d0
 
-    ! normalize
-    !dl_sum     = SUM(dec2d)
-    !dec2d(:,:) = dec2d(:,:) / dl_sum
-
   END SUBROUTINE inithann
 
   SUBROUTINE initshap(pfn, knj)
