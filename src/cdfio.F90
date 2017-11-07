@@ -285,14 +285,19 @@ CONTAINS
 #if defined key_netcdf4
     IF ( ll_nc4 ) THEN
       istatus = NF90_CREATE(cdfile,cmode=or(NF90_CLOBBER,NF90_NETCDF4     ), ncid=icout)
+      IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE in create'    ; STOP 98 ; ENDIF
     ELSE
       istatus = NF90_CREATE(cdfile,cmode=or(NF90_CLOBBER,NF90_64BIT_OFFSET), ncid=icout)
+      IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE in create'    ; STOP 98 ; ENDIF
     ENDIF
 #else
     istatus = NF90_CREATE(cdfile,cmode=or(NF90_CLOBBER,NF90_64BIT_OFFSET), ncid=icout)
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE in create'    ; STOP 98 ; ENDIF
 #endif
     istatus = NF90_DEF_DIM(icout, cn_x, kx, nid_x)
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM x in create'    ; STOP 98 ; ENDIF
     istatus = NF90_DEF_DIM(icout, cn_y, ky, nid_y)
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM y in create'    ; STOP 98 ; ENDIF
 
     IF ( kz /= 0 ) THEN
        ! try to find out the name I will use for depth dimension in the new file ...
@@ -306,6 +311,7 @@ CONTAINS
        ENDIF
        cldepvar=cldep
        istatus = NF90_DEF_DIM(icout,TRIM(cldep),kz, nid_z)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM z in create'    ; STOP 98 ; ENDIF
        IF (PRESENT (cdepvar) ) THEN
          cldepvar=cdepvar
        ENDIF
@@ -313,12 +319,14 @@ CONTAINS
 
 
     istatus = NF90_DEF_DIM(icout,cn_t,NF90_UNLIMITED, nid_t)
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM t in create'    ; STOP 98 ; ENDIF
 
     invdim(1) = nid_x ; invdim(2) = nid_y ; invdim(3) = nid_z ; invdim(4) = nid_t
 
     ! Open reference file if any,  otherwise set ncid to flag value (for copy att)
     IF ( TRIM(cdfilref) /= 'none' ) THEN
        istatus = NF90_OPEN(cdfilref,NF90_NOWRITE,incid)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_OPEN in create'    ; STOP 98 ; ENDIF
     ELSE
        incid = -9999
     ENDIF
@@ -331,32 +339,44 @@ CONTAINS
     ! define variables and copy attributes
     IF ( ll_xycoo ) THEN
        istatus = NF90_DEF_VAR(icout,cn_vlon2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lon)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lon in create'    ; STOP 98 ; ENDIF
        istatus = copyatt(cn_vlon2d, nid_lon,incid,icout)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt lon in create'    ; STOP 98 ; ENDIF
        istatus = NF90_DEF_VAR(icout,cn_vlat2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lat)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lat in create'    ; STOP 98 ; ENDIF
        istatus = copyatt(cn_vlat2d, nid_lat,incid,icout)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt lat in create'    ; STOP 98 ; ENDIF
     ENDIF
     IF ( PRESENT(cdlonvar) ) THEN
        istatus = NF90_DEF_VAR(icout,cdlonvar,NF90_FLOAT,(/nid_x/), nid_lon1d)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lon1d in create'    ; STOP 98 ; ENDIF
     ENDIF
     IF ( PRESENT(cdlatvar) ) THEN
        istatus = NF90_DEF_VAR(icout,cdlatvar,NF90_FLOAT,(/nid_y/), nid_lat1d)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lat1d in create'    ; STOP 98 ; ENDIF
     ENDIF
     IF ( kz /= 0 ) THEN
        istatus = NF90_DEF_VAR(icout,TRIM(cldepvar),NF90_FLOAT,(/nid_z/), nid_dep)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR z in create'    ; STOP 98 ; ENDIF
        ! JMM bug fix : if cdep present, then chose attribute from cldepref
        istatus = copyatt(TRIM(cldepvar), nid_dep,incid,icout)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt z in create'    ; STOP 98 ; ENDIF
     ENDIF
 
     istatus = NF90_DEF_VAR(icout,cn_vtimec,NF90_DOUBLE,(/nid_t/), nid_tim)
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR t in create'    ; STOP 98 ; ENDIF
     istatus = copyatt(cn_vtimec, nid_tim,incid,icout)
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt t in create'    ; STOP 98 ; ENDIF
 
     ! Add Global General attribute at first call
-    istatus=NF90_PUT_ATT(icout,NF90_GLOBAL,'start_date', nstart_date )
-    istatus=NF90_PUT_ATT(icout,NF90_GLOBAL,'output_frequency', cfreq )
-    istatus=NF90_PUT_ATT(icout,NF90_GLOBAL,'CONFIG',          config )
-    istatus=NF90_PUT_ATT(icout,NF90_GLOBAL,'CASE',             ccase )
+    istatus=istatus+NF90_PUT_ATT(icout,NF90_GLOBAL,'start_date', nstart_date )
+    istatus=istatus+NF90_PUT_ATT(icout,NF90_GLOBAL,'output_frequency', cfreq )
+    istatus=istatus+NF90_PUT_ATT(icout,NF90_GLOBAL,'CONFIG',          config )
+    istatus=istatus+NF90_PUT_ATT(icout,NF90_GLOBAL,'CASE',             ccase )
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_PUT_ATT global in create'    ; STOP 98 ; ENDIF
 
     istatus = NF90_CLOSE(incid)
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CLOSE in create'    ; STOP 98 ; ENDIF
 
     create=icout
   END FUNCTION create
@@ -433,14 +453,18 @@ CONTAINS
          IF ( ll_nc4 ) THEN
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv), & 
                   &               chunksizes=sdtyvar(jv)%ichunk(1:idims), deflate_level=1 )
+          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar'    ; STOP 98 ; ENDIF
          ELSE
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv) )
+          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar'    ; STOP 98 ; ENDIF
          ENDIF
 #else
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv) )
+          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar'    ; STOP 98 ; ENDIF
 #endif
           ! add attributes
           istatus = putatt(sdtyvar(jv), kout, kidvo(jv), cdglobal=cdglobal)
+          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'putatt in createvar'    ; STOP 98 ; ENDIF
           createvar=istatus
        ENDIF
     END DO
