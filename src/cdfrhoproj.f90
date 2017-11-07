@@ -222,6 +222,9 @@ PROGRAM cdfrhoproj
   DO jk=1,npk
      zsig(:,:,jk) = getvar(cf_rhofil, cv_sig, jk, npiglo, npjglo)
   END DO
+  WHERE (zsig < 0.0)
+     zsig = zspvali
+  END WHERE
 
   !! Compute interpolation coefficients as well as the level used
   !! to interpolate between
@@ -241,7 +244,7 @@ PROGRAM cdfrhoproj
            ik0=ijk
            IF (ijk == 0) THEN
               ijk=1
-              alpha(ji,jj,jsig) = 0.
+              alpha(ji,jj,jsig) = 1.
            ELSE IF (zsig(ji,jj,ijk+1) == zspvali ) THEN
               ik0=0
               alpha(ji,jj,jsig) = 0.
@@ -284,7 +287,7 @@ PROGRAM cdfrhoproj
      END DO
      ierr = closeout(ncout    )
      PRINT *,' -isodep option in use: only compute depth of isopycnic surfaces.'
-     STOP 99 
+     STOP
   ENDIF
   DEALLOCATE ( dtim) 
 
@@ -477,7 +480,7 @@ CONTAINS
     stypvar(1)%conline_operation = 'N/A'
     stypvar(1)%caxis             = 'TRYX'
 
-    ncout = create      (cf_out, cf_rhofil, npiglo, npjglo, npsig         , ld_nc4=lnc4 )
+    ncout = create      (cf_iso, cf_rhofil, npiglo, npjglo, npsig         , ld_nc4=lnc4 )
     ierr  = createvar   (ncout,  stypvar,   nvout,  ipk,    id_varout     , ld_nc4=lnc4 )
     ierr  = putheadervar(ncout , cf_rhofil, npiglo, npjglo, npsig, pdep=zi )
 
