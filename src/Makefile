@@ -277,8 +277,8 @@ cdfmoc_rapid_26N_r8_ORCA025: cdfio.o eos.o  cdfmoc_rapid_26N_r8_ORCA025.f90
 cdfmocsig: cdfio.o eos.o modutils.o  cdfmocsig.f90 
 	$(F90)  cdfmocsig.f90 -o $(BINDIR)/cdfmocsig cdfio.o eos.o modcdfnames.o modutils.o $(FFLAGS)
 
-cdfmean: cdfio.o  cdfmean.f90
-	$(F90) cdfmean.f90 -o $(BINDIR)/cdfmean cdfio.o modcdfnames.o $(FFLAGS)
+cdfmean: cdfio.o modutils.o cdfmean.f90
+	$(F90) cdfmean.f90 -o $(BINDIR)/cdfmean cdfio.o modcdfnames.o modutils.o $(FFLAGS)
 
 cdfdegrad: cdfio.o  cdfdegrad.f90
 	$(F90) cdfdegrad.f90 -o $(BINDIR)/cdfdegrad cdfio.o modcdfnames.o $(FFLAGS)
