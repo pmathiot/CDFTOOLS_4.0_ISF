@@ -218,6 +218,7 @@ PROGRAM cdfmoy
   ! loop for files
 
   cf_in = cf_lst(1)
+  PRINT *, 'FILE list length is ',nfiles
   IF ( chkfile (cf_in) ) STOP 99 ! missing file
   !
   npiglo = getdim (cf_in, cn_x)
@@ -615,7 +616,13 @@ CONTAINS
     id_var(:)  = (/(jv, jv=1,nvars)/)
     ! ipk gives the number of level or 0 if not a T[Z]YX  variable
     ipk(:)     = getipk (cf_in,nvars,cdep=cv_dep)
-    WHERE( ipk == 0 ) cv_nam='none'
+    DO jvar = 1, nvars
+       IF (ipk(jvar) == 0) THEN
+          PRINT *, TRIM(cv_nam(jvar)),' is skip because of dimension issue'
+          cv_nam(jvar)='none'
+       END IF
+    END DO
+
     IF ( lmax ) THEN 
        ipk4(1      :nvars  ) = ipk(1:nvars)
        ipk4(nvars+1:2*nvars) = ipk(1:nvars)
