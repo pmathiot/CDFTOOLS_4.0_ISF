@@ -61,7 +61,7 @@ PROGRAM cdfsigtrp
   INTEGER(KIND=4)                               :: ijmin, ijmax         ! working section limits
   INTEGER(KIND=4)                               :: npts                 ! number of points in section
   INTEGER(KIND=4)                               :: ikx=1, iky=1         ! dims of netcdf output file
-  INTEGER(KIND=4)                               :: nboutput=2           ! number of values to write in cdf output
+  INTEGER(KIND=4)                               :: nboutput=4           ! number of values to write in cdf output
   INTEGER(KIND=4)                               :: ncout, ierr          ! for netcdf output
   INTEGER(KIND=4)                               :: iweight              ! weight of input file for further averaging
   INTEGER(KIND=4), DIMENSION(:),    ALLOCATABLE :: iimina, iimaxa       ! sections limits
@@ -71,6 +71,7 @@ PROGRAM cdfsigtrp
   REAL(KIND=4)                                  :: refdep =0.e0         ! reference depth (m)
   REAL(KIND=4)                                  :: zsps, zspu, zspv     ! Missing value for salinity, U and V
   REAL(KIND=4), DIMENSION(1)                    :: rdummy1, rdummy2     ! working variable
+  REAL(KIND=4), DIMENSION(1)                    :: rdummy3, rdummy4     ! working variable
   REAL(KIND=4), DIMENSION(:),       ALLOCATABLE :: gdept, gdepw         ! depth of T and W points 
   REAL(KIND=4), DIMENSION(:),       ALLOCATABLE :: eu                   ! either e1v or e2u
   REAL(KIND=4), DIMENSION(:),       ALLOCATABLE :: e3t1d, e3w1d         ! vertical metrics in case of full step
@@ -92,8 +93,8 @@ PROGRAM cdfsigtrp
   REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: ddepw                ! depth of W  points
   REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dsig                 ! density
   REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dhiso                ! depth of isopycns
-  REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dwtrp, dwtrpbin      ! transport arrays
-  REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dtrpbin              ! transport arrays
+  REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dwtrp, dwtrpbin, dwtrpbinpos, dwtrpbinneg      ! transport arrays
+  REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dtrpbin, dtrpbinneg, dtrpbinpos              ! transport arrays
 
   TYPE(variable), DIMENSION(:),     ALLOCATABLE :: stypvar              ! structure of output
 
@@ -106,6 +107,7 @@ PROGRAM cdfsigtrp
   CHARACTER(LEN=256)                            :: cf_out='trpsig.txt'  ! output  ascii file
   CHARACTER(LEN=256)                            :: cf_nc                ! output netcdf file (2d)
   CHARACTER(LEN=256)                            :: cf_outnc             ! output netcdf file (1d, 0d))
+  CHARACTER(LEN=256)                            :: cf_root              !
   CHARACTER(LEN=256)                            :: cv_dep               ! depth variable
   CHARACTER(LEN=256)                            :: cldum                ! dummy string
   CHARACTER(LEN=256)                            :: cglobal              ! global attribute
@@ -193,6 +195,7 @@ PROGRAM cdfsigtrp
      PRINT *,'       [-section file] : give the name of section file.'
      PRINT *,'               Default is ', TRIM(cf_section)
      PRINT *,'       [-temp] : use temperature instead of density for binning'
+     PRINT *,'       [-o OUT-rootname] : Define output root-name instead of ',TRIM(cf_root)
      PRINT *,'       [-help] : give commented example for the section file.'
      PRINT *,'      '
      PRINT *,'     REQUIRED FILES :'
@@ -241,6 +244,7 @@ PROGRAM cdfsigtrp
      CASE ( '-refdep' ) ; CALL getarg(ijarg, cldum      ) ; ijarg=ijarg+1 ; READ(cldum,*) refdep
      CASE ( '-section') ; CALL getarg(ijarg, cf_section ) ; ijarg=ijarg+1 
      CASE ( '-neutral') ; lntr   = .TRUE.
+     CASE ( '-o'      ) ; CALL getarg (ijarg, cf_root  ) ; ijarg = ijarg + 1
      CASE DEFAULT       ; PRINT *,' ERROR : ',TRIM(cldum),' : unknown option.' ; STOP 99
      END SELECT
   END DO
@@ -305,6 +309,8 @@ PROGRAM cdfsigtrp
 
   ipk(1)=nbins ! sigma for each level
   ipk(2)=nbins ! transport for each level
+  ipk(3)=nbins ! transport for each level
+  ipk(4)=nbins ! transport for each level
   ! initialisation of variable names etc... is done according to section name
 
   ! Initialise sections from file 
@@ -333,7 +339,7 @@ PROGRAM cdfsigtrp
   ENDIF
 
   ! Allocate and build sigma levels and section array
-  ALLOCATE ( dsigma_lev (nbins+1) , dtrpbin(nsection,nbins)  )
+  ALLOCATE ( dsigma_lev (nbins+1) , dtrpbin(nsection,nbins), dtrpbinpos(nsection,nbins), dtrpbinneg(nsection,nbins)  )
 
   dsigma_lev(1)=dsigma_min
   dltsig=( dsigma_max - dsigma_min) / nbins
@@ -379,7 +385,7 @@ PROGRAM cdfsigtrp
      ALLOCATE ( zu(npts,npk), zt(npts,npk), zs(npts,npk), zz(npts,npk), dsig(npts,0:npk)  )
      ALLOCATE ( eu(npts), de3(npts,npk), ddepu(npts, 0:npk), ddepw(npts,0:npk),zmask(npts,npk) )
      ALLOCATE ( tmpm(1,npts), tmpz(npts,1)                                   )
-     ALLOCATE ( dwtrp(npts, nbins+1), dhiso(npts,nbins+1), dwtrpbin(npts,nbins) )
+     ALLOCATE ( dwtrp(npts, nbins+1), dhiso(npts,nbins+1), dwtrpbin(npts,nbins), dwtrpbinpos(npts,nbins), dwtrpbinneg(npts,nbins) )
      ALLOCATE ( rlonlat(npts,1) )
 
      zt = 0. ; zs = 0. ; zu = 0. ; ddepu= 0.d0 ; zmask = 0.  ; dsig=0.d0
@@ -446,6 +452,7 @@ PROGRAM cdfsigtrp
 
         IF (lbrk ) THEN
            ! need to fix de3, ddepu, zu, zs, zt, nk , zmask
+           PRINT *, ijmin, iimin
            IF ( lfull) THEN 
               DO ji=1, npts
                  de3(ji,:) = e3t1d(:)
@@ -573,12 +580,18 @@ PROGRAM cdfsigtrp
      END DO
 
      ! binned transport : difference between 2 isopycns
+     dwtrpbinpos(:,:)=0.0; dwtrpbinneg(:,:)=0.0
      DO jbin=1, nbins
         dsigma=dsigma_lev(jbin)
         DO ji=1, npts
            dwtrpbin(ji,jbin) = dwtrp(ji,jbin+1) -  dwtrp(ji,jbin) 
+           IF (dwtrpbin(ji,jbin) > 0.0) dwtrpbinpos(ji,jbin)=dwtrpbin(ji,jbin)
+           IF (dwtrpbin(ji,jbin) < 0.0) dwtrpbinneg(ji,jbin)=dwtrpbin(ji,jbin)
         END DO
         dtrpbin(jsec,jbin)=SUM(dwtrpbin(:,jbin) )
+        dtrpbinpos(jsec,jbin)=SUM(dwtrpbinpos(:,jbin))
+        dtrpbinneg(jsec,jbin)=SUM(dwtrpbinneg(:,jbin))
+        PRINT *, dsigma, dtrpbin/1.d6, dtrpbinpos/1.d6, dtrpbinneg/1.d6
      END DO
 
      ! output of the code for 1 section
@@ -618,8 +631,12 @@ PROGRAM cdfsigtrp
      DO jiso=1,nbins
         rdummy1 = dsigma_lev(jiso)
         rdummy2 = dtrpbin(jsec,jiso)/1.d6  ! Sv
+        rdummy3 = dtrpbinpos(jsec,jiso)/1.d6  ! Sv
+        rdummy4 = dtrpbinneg(jsec,jiso)/1.d6  ! Sv
         ierr    = putvar(ncout, id_varout(1), rdummy1, jiso, ikx, iky )
         ierr    = putvar(ncout, id_varout(2), rdummy2, jiso, ikx, iky )
+        ierr    = putvar(ncout, id_varout(3), rdummy3, jiso, ikx, iky )
+        ierr    = putvar(ncout, id_varout(4), rdummy4, jiso, ikx, iky )
      END DO
 
      ierr = closeout(ncout)
@@ -962,6 +979,20 @@ CONTAINS
        stypvar(2)%valid_max      = 1000.
        stypvar(2)%clong_name     = TRIM(cprefixlongname)//'transport in temperature class'
        stypvar(2)%cshort_name    = 'temptrp'
+
+       stypvar(3)%cname          = 'temptrppos'//TRIM(csuffixvarname)
+       stypvar(3)%cunits         = 'Sv'
+       stypvar(3)%valid_min      = -1000.
+       stypvar(3)%valid_max      = 1000.
+       stypvar(3)%clong_name     = TRIM(cprefixlongname)//'transport in temperature class'
+       stypvar(3)%cshort_name    = 'temptrppos'
+
+       stypvar(4)%cname          = 'temptrpneg'//TRIM(csuffixvarname)
+       stypvar(4)%cunits         = 'Sv'
+       stypvar(4)%valid_min      = -1000.
+       stypvar(4)%valid_max      = 1000.
+       stypvar(4)%clong_name     = TRIM(cprefixlongname)//'transport in temperature class'
+       stypvar(4)%cshort_name    = 'temptrpneg'
     ELSE
        stypvar(1)%cname          = 'sigma_class'
        stypvar(1)%cunits         = '[]'
@@ -976,11 +1007,26 @@ CONTAINS
        stypvar(2)%valid_max      = 1000.
        stypvar(2)%clong_name     = TRIM(cprefixlongname)//'transport in sigma class'
        stypvar(2)%cshort_name    = 'sigtrp'
+
+       stypvar(3)%cname          = 'sigtrppos'//TRIM(csuffixvarname)
+       stypvar(3)%cunits         = 'Sv'
+       stypvar(3)%valid_min      = -1000.
+       stypvar(3)%valid_max      = 1000.
+       stypvar(3)%clong_name     = TRIM(cprefixlongname)//'transport in sigma class (positive)'
+       stypvar(3)%cshort_name    = 'sigtrppos'
+
+       stypvar(4)%cname          = 'sigtrpneg'//TRIM(csuffixvarname)
+       stypvar(4)%cunits         = 'Sv'
+       stypvar(4)%valid_min      = -1000.
+       stypvar(4)%valid_max      = 1000.
+       stypvar(4)%clong_name     = TRIM(cprefixlongname)//'transport in sigma class (negative)'
+       stypvar(4)%cshort_name    = 'sigtrpneg'
+
     ENDIF
 
     ! create output fileset
-    IF (ltemp) THEN  ; cf_outnc = TRIM(csection(ksec))//'_trptemp.nc'
-    ELSE             ; cf_outnc = TRIM(csection(ksec))//'_trpsig.nc'
+    IF (ltemp) THEN  ; cf_outnc = TRIM(cf_root)//TRIM(csection(ksec))//'_trptemp.nc'
+    ELSE             ; cf_outnc = TRIM(cf_root)//TRIM(csection(ksec))//'_trpsig.nc'
     ENDIF
 
     ncout = create      (cf_outnc, 'none',  ikx,      iky, nbins, cdep=cv_dep               )
