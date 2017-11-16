@@ -224,7 +224,7 @@ CONTAINS
           istatus=NF90_PUT_ATT(kcout, kidvar, 'valid_max',  90.          )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'long_name','Latitude'     )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'nav_model', 'Default grid')
-       CASE ('time_counter', 'time', 't' )
+       CASE ('time_counter', 'time', 't', 'time_centered' )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'calendar',   calendar     )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'units',      ctime_units  )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'time_origin',ctime_origin )
@@ -250,6 +250,16 @@ CONTAINS
     copyatt = istatus
   END FUNCTION copyatt
 
+  INTEGER(KIND=4) FUNCTION getincid(cdfile, cvar, incid_ref)
+     CHARACTER(LEN=*), INTENT(in) :: cdfile, cvar
+     INTEGER(KIND=4) , INTENT(in) :: incid_ref
+     IF (chkvar(cdfile, cvar) .OR. incid_ref==-9999) THEN
+        getincid=-9999
+     ELSE
+        getincid=incid_ref
+     END IF
+
+  END FUNCTION getincid
 
   INTEGER(KIND=4) FUNCTION create( cdfile, cdfilref ,kx,ky,kz ,cdep, cdepvar, &
        &                           cdlonvar, cdlatvar,  ld_xycoo, ld_nc4 )
@@ -272,7 +282,7 @@ CONTAINS
     LOGICAL,          OPTIONAL, INTENT(in) :: ld_xycoo ! if false then DO NOT read nav_lat nav_lat from input file
     LOGICAL,          OPTIONAL, INTENT(in) :: ld_nc4   ! create NETCDF4 file with chunking and deflation
 
-    INTEGER(KIND=4)               :: istatus, icout, incid, idum
+    INTEGER(KIND=4)               :: istatus, icout, incid, incid_ref, idum
     INTEGER(KIND=4) ,DIMENSION(4) :: invdim
     CHARACTER(LEN=256)            :: cldep, cldepref, cldepvar, clonvar, clatvar
     LOGICAL                       :: ll_xycoo, ll_nc4
@@ -325,10 +335,10 @@ CONTAINS
 
     ! Open reference file if any,  otherwise set ncid to flag value (for copy att)
     IF ( TRIM(cdfilref) /= 'none' ) THEN
-       istatus = NF90_OPEN(cdfilref,NF90_NOWRITE,incid)
+       istatus = NF90_OPEN(cdfilref,NF90_NOWRITE,incid_ref)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_OPEN in create'    ; STOP 98 ; ENDIF
     ELSE
-       incid = -9999
+       incid_ref = -9999
     ENDIF
 
     IF (PRESENT (ld_xycoo) ) THEN
@@ -340,11 +350,11 @@ CONTAINS
     IF ( ll_xycoo ) THEN
        istatus = NF90_DEF_VAR(icout,cn_vlon2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lon)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lon in create'    ; STOP 98 ; ENDIF
-       istatus = copyatt(cn_vlon2d, nid_lon,incid,icout)
+       incid=getincid(cdfilref, cn_vlon2d, incid_ref) ; istatus = copyatt(cn_vlon2d, nid_lon,incid,icout)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt lon in create'    ; STOP 98 ; ENDIF
-       istatus = NF90_DEF_VAR(icout,cn_vlat2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lat)
+       incid=getincid(cdfilref, cn_vlat2d, incid_ref) ; istatus = NF90_DEF_VAR(icout,cn_vlat2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lat)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lat in create'    ; STOP 98 ; ENDIF
-       istatus = copyatt(cn_vlat2d, nid_lat,incid,icout)
+       incid=getincid(cdfilref, cn_vlat2d, incid_ref) ; istatus = copyatt(cn_vlat2d, nid_lat,incid,icout)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt lat in create'    ; STOP 98 ; ENDIF
     ENDIF
     IF ( PRESENT(cdlonvar) ) THEN
@@ -357,15 +367,15 @@ CONTAINS
     ENDIF
     IF ( kz /= 0 ) THEN
        istatus = NF90_DEF_VAR(icout,TRIM(cldepvar),NF90_FLOAT,(/nid_z/), nid_dep)
-       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR z in create'    ; STOP 98 ; ENDIF
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR ',TRIM(cldepvar),' in create'    ; STOP 98 ; ENDIF
        ! JMM bug fix : if cdep present, then chose attribute from cldepref
-       istatus = copyatt(TRIM(cldepvar), nid_dep,incid,icout)
-       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt z in create'    ; STOP 98 ; ENDIF
+       incid=getincid(cdfilref, cldepvar, incid_ref) ; istatus = copyatt(TRIM(cldepvar), nid_dep,incid,icout)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt ',TRIM(cldepvar),' in create'    ; STOP 98 ; ENDIF
     ENDIF
 
     istatus = NF90_DEF_VAR(icout,cn_vtimec,NF90_DOUBLE,(/nid_t/), nid_tim)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR t in create'    ; STOP 98 ; ENDIF
-    istatus = copyatt(cn_vtimec, nid_tim,incid,icout)
+    incid=getincid(cdfilref, cn_vtimec, incid_ref) ; istatus = copyatt(cn_vtimec, nid_tim,incid,icout)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt t in create'    ; STOP 98 ; ENDIF
 
     ! Add Global General attribute at first call
@@ -375,8 +385,10 @@ CONTAINS
     istatus=istatus+NF90_PUT_ATT(icout,NF90_GLOBAL,'CASE',             ccase )
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_PUT_ATT global in create'    ; STOP 98 ; ENDIF
 
-    istatus = NF90_CLOSE(incid)
-    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CLOSE in create'    ; STOP 98 ; ENDIF
+    IF (TRIM(cdfilref) /= 'none') THEN
+       istatus = NF90_CLOSE(incid_ref)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CLOSE in create'    ; STOP 98 ; ENDIF
+    END IF
 
     create=icout
   END FUNCTION create
