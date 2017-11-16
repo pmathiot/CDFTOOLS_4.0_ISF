@@ -176,6 +176,7 @@ PROGRAM cdftransport
   TYPE(variable), DIMENSION(:),   ALLOCATABLE :: stypvar        ! structure of output
 
   CHARACTER(LEN=256)                          :: cf_vtfil       ! VT file  (in)
+  CHARACTER(LEN=256)                          :: cf_utfil       ! UT file  (in)
   CHARACTER(LEN=256)                          :: cf_tfil        ! T file  (in)
   CHARACTER(LEN=256)                          :: cf_ufil        ! U file   (in)
   CHARACTER(LEN=256)                          :: cf_vfil        ! V file   (in)
@@ -294,6 +295,7 @@ PROGRAM cdftransport
      CALL getarg (ijarg, cldum) ; ijarg=ijarg+1
      SELECT CASE ( cldum )
      CASE ('-vt'    ) ; CALL getarg (ijarg, cf_vtfil) ; ijarg=ijarg+1 
+     CASE ('-ut'    ) ; CALL getarg (ijarg, cf_utfil) ; ijarg=ijarg+1 
      CASE ('-u'     ) ; CALL getarg (ijarg, cf_ufil ) ; ijarg=ijarg+1 
      CASE ('-v'     ) ; CALL getarg (ijarg, cf_vfil ) ; ijarg=ijarg+1 
      CASE ('-t'     ) ; CALL getarg (ijarg, cf_tfil ) ; ijarg=ijarg+1 
@@ -332,6 +334,7 @@ PROGRAM cdftransport
      cn_fe3u  = cf_vfil
      cn_fe3v  = cf_vfil
      cf_vtfil = cf_vfil
+     cf_utfil = cf_vfil
      cf_tfil  = cf_vfil
   ENDIF
 
@@ -347,6 +350,7 @@ PROGRAM cdftransport
         lchk = lchk .OR. chkfile(cf_tfil )
      ELSE IF (lheat  ) THEN 
         lchk = lchk .OR. chkfile(cf_vtfil)
+        lchk = lchk .OR. chkfile(cf_utfil)
      ENDIF
   ENDIF
   IF ( lchk ) STOP 99 ! missing files
@@ -560,8 +564,8 @@ PROGRAM cdftransport
                     zut(:,:) = 0.
                     zus(:,:) = 0.
                  ELSE
-                    zut(:,:) = getvar(cf_vtfil, cn_vozout,   jk, npiglo, npjglo, ktime=itime)
-                    zus(:,:) = getvar(cf_vtfil, cn_vozous,   jk, npiglo, npjglo, ktime=itime)
+                    zut(:,:) = getvar(cf_utfil, cn_vozout,   jk, npiglo, npjglo, ktime=itime)
+                    zus(:,:) = getvar(cf_utfil, cn_vozous,   jk, npiglo, npjglo, ktime=itime)
                  ENDIF
                  zvt(:,:) = getvar(cf_vtfil, cn_vomevt,   jk, npiglo, npjglo, ktime=itime)
                  zvs(:,:) = getvar(cf_vtfil, cn_vomevs,   jk, npiglo, npjglo, ktime=itime)
