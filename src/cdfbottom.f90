@@ -115,9 +115,9 @@ PROGRAM cdfbottom
   npjglo = getdim (cf_in,cn_y)
 
   ! looking for npk among various possible name
-  idep_max=8
+  idep_max=9
   ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
+  clv_dep(:) = (/cn_z,'gdept','z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
   idep=1  ; ierr=1000
   DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
      npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
@@ -157,7 +157,7 @@ PROGRAM cdfbottom
      IF (cv_names(jvar) == 'none' ) THEN
         ! skip these variable
      ELSE
-        PRINT *, ' WORKING with ', TRIM( cv_names(jvar) ), ipk(jvar)
+        PRINT *, ' WORKING with ', TRIM( cv_names(jvar) )
         DO jt = 1, npt
            DO jk = 1, ipk(jvar)
               zmask = 1.
@@ -204,10 +204,9 @@ CONTAINS
     END DO
     ! create output fileset
     ! create output file taking the sizes in cf_in
-
     ncout = create      (cf_out,   cf_in  , npiglo, npjglo, 1         , ld_nc4=lnc4 ) ! 1 level file
     ierr  = createvar   (ncout   , stypvar, nvars , ipko  , id_varout , ld_nc4=lnc4 )
-    ierr  = putheadervar(ncout   , cf_in  , npiglo, npjglo, 1         )
+    ierr  = putheadervar(ncout   , cf_in  , npiglo, npjglo, 1         , cdep=cv_dep)
     dtim  = getvar1d(cf_in, cn_vtimec, npt     )
     ierr  = putvar1d(ncout, dtim,      npt, 'T')
 
