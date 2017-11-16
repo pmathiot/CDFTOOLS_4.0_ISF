@@ -152,6 +152,17 @@ PROGRAM cdfheatc
      cn_ve3t = cn_ve3tvvl
   ENDIF
 
+  ! check input file variable name
+  CALL findvarname(cn_fhgr, cn_ve1t)
+  CALL findvarname(cn_fhgr, cn_ve2t)
+  CALL findvarname(cn_fzgr, cn_ve3t1d)
+  CALL findvarname(cf_tfil, cn_votemper)
+  CALL findvarname(cn_fe3t, cn_ve3t)
+  CALL finddimname(cf_tfil,cn_x)
+  CALL finddimname(cf_tfil,cn_y)
+  CALL finddimname(cf_tfil,cn_z)
+  CALL finddimname(cf_tfil,cn_t)
+
   npiglo = getdim (cf_tfil,cn_x)
   npjglo = getdim (cf_tfil,cn_y)
   npk    = getdim (cf_tfil,cn_z)
@@ -184,7 +195,7 @@ PROGRAM cdfheatc
 
   ALLOCATE ( gdepw(npk), dtim(npt))
   IF ( lfull ) ALLOCATE ( e31d(npk))
-
+  
   e1t(:,:) = getvar(cn_fhgr, cn_ve1t, 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
   e2t(:,:) = getvar(cn_fhgr, cn_ve2t, 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
   gdepw(:) = getvare3(cn_fzgr, cn_gdepw,  npk)

@@ -173,6 +173,7 @@
   PUBLIC :: getvar, getvarxz, getvaryz, getvar1d, getvare3, getvar3d, getvar3dt, getvar4d, getspval
   PUBLIC :: gettimeseries
   PUBLIC :: closeout, ncopen
+  PUBLIC :: findvarname, finddimname
   PUBLIC :: ERR_HDL
 
 
@@ -860,8 +861,8 @@ CONTAINS
 
     IF ( PRESENT(kstatus)  ) kstatus=0
     IF ( PRESENT(ldexact)  ) lexact=ldexact
-!    IF ( cdim_name == cn_x ) lexact=.true.  ! fix for XIOS files having now a new dimension xaxis_bound which match getdim ('x') ....
-!                                            ! more clever fix must be found for identification of the dimensions in the input files
+    IF ( cdim_name == cn_x ) lexact=.true.  ! fix for XIOS files having now a new dimension xaxis_bound which match getdim ('x') ....
+                                            ! more clever fix must be found for identification of the dimensions in the input files
     istatus=NF90_OPEN(cdfile, NF90_NOWRITE, incid)
     IF ( istatus == NF90_NOERR ) THEN
        istatus=NF90_INQUIRE(incid, ndimensions=idims)
@@ -878,7 +879,7 @@ CONTAINS
        ELSE  ! scann all dims to look for a partial match
          DO jdim = 1, idims
             istatus=NF90_INQUIRE_DIMENSION(incid, jdim, name=clnam, len=getdim)
-            IF ( INDEX(clnam, TRIM(cdim_name)) == 1 ) THEN
+            IF ( INDEX(clnam, TRIM(cdim_name)) /= 0 ) THEN
                IF ( PRESENT(cdtrue) ) cdtrue=clnam
                EXIT
             ENDIF
@@ -949,6 +950,7 @@ CONTAINS
        ENDIF
        istatus=NF90_CLOSE(incid)
     ELSE              ! problem with the file
+       IF (TRIM(cdfile) /= 'none') PRINT *, 'ERROR in openning ',TRIM(cdfile)
        IF ( PRESENT(cdtrue) ) cdtrue='unknown'
        IF ( PRESENT(kstatus) ) kstatus=1 
     ENDIF
@@ -1243,6 +1245,74 @@ CONTAINS
     istatus=NF90_CLOSE(incid)
 
   END FUNCTION getvarname
+
+  SUBROUTINE finddimname(cdfile,cddim)
+    CHARACTER(LEN=*), INTENT(inout) :: cddim        ! variable name to work with
+    CHARACTER(LEN=*), INTENT(in   ) :: cdfile       ! variable name to work with
+    CHARACTER(LEN=256) :: cdimname
+    INTEGER :: istatus, idx_dim, jd, kndims, incid, id_dim
+
+    idx_dim = 1
+    istatus = NF90_OPEN(cdfile,NF90_NOWRITE,incid)
+    IF (istatus /= 0) THEN
+       PRINT *, 'ERROR in opening file ',TRIM(cdfile)
+       STOP 98
+    ENDIF
+    istatus=NF90_INQUIRE(incid, ndimensions=kndims)
+    istatus=NF90_INQ_DIMID(incid, cddim, id_dim)
+    IF (istatus /= 0) THEN
+       idx_dim = 0
+       DO jd = 1, kndims
+          istatus=NF90_INQUIRE_DIMENSION(incid, jd, name=cdimname )
+          idx_dim=INDEX(TRIM(cddim),TRIM(cdimname))
+          IF (idx_dim /= 0) THEN
+             cddim=TRIM(cdimname)
+             EXIT
+          ENDIF
+       END DO
+    ENDIF
+    IF (idx_dim==0) THEN
+       PRINT *, 'Dimension not found, there is no match between netcdf variable name and the user list.'
+       PRINT *, 'User list is ',TRIM(cddim)
+       PRINT *, 'check argument input or variable list in modcdfname (need to be recompile)'
+       STOP 98
+    ENDIF
+    PRINT *, 'Dimension name used is ',TRIM(cddim)
+  END SUBROUTINE
+
+  SUBROUTINE findvarname(cdfile,cdvar)
+    CHARACTER(LEN=*), INTENT(inout) :: cdvar        ! variable name to work with
+    CHARACTER(LEN=*), INTENT(in   ) :: cdfile       ! variable name to work with
+    CHARACTER(LEN=256) :: cvarname
+    INTEGER :: istatus, idx_var, jv, knvars, incid, id_var
+
+    idx_var = 1
+    istatus = NF90_OPEN(cdfile,NF90_NOWRITE,incid)
+    IF (istatus /= 0) THEN
+       PRINT *, 'ERROR in opening file ',TRIM(cdfile)
+       STOP 98
+    ENDIF
+    istatus = NF90_INQUIRE (incid, nvariables = knvars )
+    istatus = NF90_INQ_VARID ( incid,cdvar,id_var)
+    IF (istatus /= 0) THEN
+       idx_var = 0
+       DO jv = 1, knvars
+          istatus=NF90_INQUIRE_VARIABLE(incid, jv, name=cvarname )
+          idx_var=INDEX(TRIM(cdvar),TRIM(cvarname))
+          IF (idx_var /= 0) THEN
+             cdvar=TRIM(cvarname)
+             EXIT
+          ENDIF
+       END DO
+    ENDIF
+    IF (idx_var==0) THEN
+       PRINT *, 'Variable not found, there is no match between netcdf variable name and the user list.'
+       PRINT *, 'User list is ',TRIM(cdvar)
+       PRINT *, 'check argument input or variable list in modcdfname (need to be recompile)'
+       STOP 98
+    ENDIF
+    PRINT *, 'Variable used is ',TRIM(cdvar)
+  END SUBROUTINE
 
   FUNCTION  getvar (cdfile,cdvar,klev,kpi,kpj,kimin,kjmin, ktime, ldiom)
     !!---------------------------------------------------------------------
@@ -2927,7 +2997,7 @@ CONTAINS
        IF ( istatus == NF90_NOERR ) THEN
           chkvar = .false.
        ELSE
-          PRINT *, ' Var ',TRIM(cd_var),' is missing in file ',TRIM(cd_file)
+          IF (cd_file /= 'none') PRINT *, ' Var ',TRIM(cd_var),' is missing in file ',TRIM(cd_file)
           chkvar = .true.
        ENDIF
        

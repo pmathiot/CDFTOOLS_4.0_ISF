@@ -244,25 +244,14 @@ PROGRAM cdfmean
   IF ( lbas ) lchk =  chkfile(cn_fbasins ) .OR. lchk
   IF ( lchk ) STOP 99 ! missing file
 
-  cv_dep   = 'none'
+  CALL finddimname(cf_in, cn_x)
+  CALL finddimname(cf_in, cn_y)
+  CALL finddimname(cf_in, cn_z)
+  CALL finddimname(cf_in, cn_t)
+
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
-
-  ! looking for npk among various possible name
-  idep_max=8
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  END DO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-     PRINT *,' assume file with no depth'
-     npk=0
-  ENDIF
-
+  npk    = getdim (cf_in, cn_z) 
   npt   = getdim (cf_in, cn_t)
   nvpk  = getvdim(cf_in, cv_nam)
   ! save original npiglo, npiglo
@@ -287,7 +276,6 @@ PROGRAM cdfmean
   WRITE(6, *) 'npk    = ', npk
   WRITE(6, *) 'npt    = ', npt
   WRITE(6, *) 'nvpk   = ', nvpk
-  WRITE(6, *) 'depth dim name is ', TRIM(cv_dep)
 
   ! Allocate arrays
   ALLOCATE ( ibmask(nbasin,npiglo,npjglo) )
