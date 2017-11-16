@@ -15,6 +15,7 @@ PROGRAM cdfmean
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
+  USE modutils     ! for SetGlobalAtt
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -352,7 +353,7 @@ PROGRAM cdfmean
      ENDIF
      cv_dep   = cn_gdepw
   CASE DEFAULT
-     PRINT *, 'this type of variable is not known :', TRIM(ctype)
+     PRINT *, 'this type of variable (-p option) is not known or missing :', TRIM(ctype)
      STOP 99
   END SELECT
 
@@ -607,6 +608,9 @@ CONTAINS
           stypvar(n_sum3d(jbasin))%caxis          = 'T'
        ENDIF
     ENDDO  ! basin loop
+
+    ! define global attribute with command line
+    CALL SetGlobalAtt( cglobal , 'A')
 
     ! create output fileset
     ncout = create      (cf_ncout,   'none',  ikx,   iky,   nvpk, cdep=cv_dep)
