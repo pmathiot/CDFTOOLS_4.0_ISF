@@ -309,7 +309,7 @@ CONTAINS
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM x in create'    ; STOP 98 ; ENDIF
     istatus = NF90_DEF_DIM(icout, cn_y, ky, nid_y)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM y in create'    ; STOP 98 ; ENDIF
-
+    
     IF ( kz /= 0 ) THEN
        ! try to find out the name I will use for depth dimension in the new file ...
        IF (PRESENT (cdep) ) THEN
@@ -328,9 +328,7 @@ CONTAINS
        ENDIF
     ENDIF
 
-
-    istatus = NF90_DEF_DIM(icout,cn_t,NF90_UNLIMITED, nid_t)
-    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM t in create'    ; STOP 98 ; ENDIF
+    CALL ERR_HDL(NF90_DEF_DIM(icout,cn_t,NF90_UNLIMITED, nid_t),'NF90_DEF_DIM t in create ('//TRIM(cn_t)//')')
 
     invdim(1) = nid_x ; invdim(2) = nid_y ; invdim(3) = nid_z ; invdim(4) = nid_t
 
@@ -1102,7 +1100,7 @@ CONTAINS
   END FUNCTION getnvar
 
 
-  FUNCTION  getipk (cdfile,knvars,cdep)
+  FUNCTION  getipk (cdfile,knvars)
     !!---------------------------------------------------------------------
     !!                  ***  FUNCTION getipk  ***
     !!
@@ -1116,19 +1114,16 @@ CONTAINS
     !!----------------------------------------------------------------------
     CHARACTER(LEN=*),           INTENT(in) :: cdfile   ! File to look at
     INTEGER(KIND=4),            INTENT(in) ::  knvars  ! Number of variables in cdfile
-    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cdep     ! optional depth dim name
     INTEGER(KIND=4), DIMENSION(knvars)     :: getipk   ! array (variables ) of levels
 
     INTEGER(KIND=4)    :: incid, ipk, jv, iipk
     INTEGER(KIND=4)    :: istatus
-    CHARACTER(LEN=256) :: cldep='dep'
+    CHARACTER(LEN=256) :: cldep
     !!----------------------------------------------------------------------
     istatus=NF90_OPEN(cdfile,NF90_NOWRITE,incid)
-
-    IF (  PRESENT (cdep) ) cldep = cdep
-
+    
     ! Note the very important TRIM below : if not, getdim crashes as it never find the correct dim !
-    iipk = getdim(cdfile, TRIM(cldep), kstatus=istatus)
+    iipk = getdim(cdfile, TRIM(cn_z), kstatus=istatus)
 
     IF ( istatus /= 0 ) THEN
        PRINT *,' getipk : vertical dim not found ...assume 1'
@@ -1147,7 +1142,6 @@ CONTAINS
     END DO
 
     istatus=NF90_CLOSE(incid)
-
   END FUNCTION getipk
 
 
@@ -1264,7 +1258,7 @@ CONTAINS
        idx_dim = 0
        DO jd = 1, kndims
           istatus=NF90_INQUIRE_DIMENSION(incid, jd, name=cdimname )
-          idx_dim=INDEX(TRIM(cddim),TRIM(cdimname))
+          idx_dim=INDEX('|'//TRIM(cddim)//'|','|'//TRIM(cdimname)//'|')
           IF (idx_dim /= 0) THEN
              cddim=TRIM(cdimname)
              EXIT
@@ -1298,7 +1292,7 @@ CONTAINS
        idx_var = 0
        DO jv = 1, knvars
           istatus=NF90_INQUIRE_VARIABLE(incid, jv, name=cvarname )
-          idx_var=INDEX(TRIM(cdvar),TRIM(cvarname))
+          idx_var=INDEX('|'//TRIM(cdvar)//'|','|'//TRIM(cvarname)//'|')
           IF (idx_var /= 0) THEN
              cdvar=TRIM(cvarname)
              EXIT
@@ -2507,19 +2501,18 @@ CONTAINS
     ijmin = 1 ; IF (PRESENT(kjmin) ) ijmin = kjmin
     itime = 1 ; IF (PRESENT(ktime) ) itime = ktime
 
-    istatus=NF90_OPEN(cdfile,NF90_WRITE,incid)
-    istatus=NF90_INQ_VARID(incid,cdvar,id_var)
+    CALL ERR_HDL(NF90_OPEN(cdfile,NF90_WRITE,incid),'NF90_OPEN in reputvarr4 on file ('//TRIM(cdfile)//')')
+    CALL ERR_HDL(NF90_INQ_VARID(incid,cdvar,id_var),'NF90_INQ_VARID in reputvarr4 on var ('//TRIM(cdvar)//')')
      ! look for unlimited dim (time_counter)
     istatus=NF90_INQUIRE         (incid,    unlimitedDimId=id_dimunlim       )
     istatus=NF90_INQUIRE_VARIABLE(incid,id_var,ndims=inbdim,dimids=inldim(:) )
-
     !  if the last dim of id_var is time, then adjust the starting point
     istart(:) = 1     ; icount(:) = 1    ! default
     istart(1) = iimin ; istart(2) = ijmin
     icount(1) = kpi   ; icount(2) = kpj  ! in any case
+    
     IF ( inldim(inbdim) == id_dimunlim ) istart(inbdim) = itime ! assume than last dim is UNLIM
     IF ( inbdim == 4                   ) istart(3     ) = ilev
-
     istatus=NF90_PUT_VAR(incid,id_var, ptab,start=istart, count=icount )
 
     IF (PRESENT(kwght)) THEN
@@ -2815,7 +2808,7 @@ CONTAINS
 
   END FUNCTION ncopen
 
-  SUBROUTINE ERR_HDL(kstatus)
+  SUBROUTINE ERR_HDL(kstatus,comments)
     !!---------------------------------------------------------------------
     !!                  ***  ROUTINE ERR_HDL  ***
     !!
@@ -2824,8 +2817,10 @@ CONTAINS
     !!
     !!----------------------------------------------------------------------
     INTEGER(KIND=4), INTENT(in) ::  kstatus
+    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: comments
     !!----------------------------------------------------------------------
     IF (kstatus /=  NF90_NOERR ) THEN
+       IF (PRESENT(comments)) PRINT *, TRIM(comments)
        PRINT *, 'ERROR in NETCDF routine, status=',kstatus
        PRINT *,NF90_STRERROR(kstatus)
        STOP 98

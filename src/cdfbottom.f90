@@ -96,10 +96,10 @@ PROGRAM cdfbottom
      CASE ( '-p'  ) ;  CALL getarg (ijarg, ctype) ; ijarg = ijarg + 1
         IF ( chkfile (cn_fmsk )) STOP 99  ! missing files
         SELECT CASE ( ctype )
-        CASE ( 'T', 't', 'S', 's' ) ; cv_msk=cn_tmask
-        CASE ( 'U', 'u'           ) ; cv_msk=cn_umask
-        CASE ( 'V', 'v'           ) ; cv_msk=cn_vmask
-        CASE ( 'F', 'f'           ) ; cv_msk=cn_fmask
+        CASE ( 'T', 't', 'S', 's' ) ; cv_msk=cn_tmask ; cv_dep=cn_vdeptht
+        CASE ( 'U', 'u'           ) ; cv_msk=cn_umask ; cv_dep=cn_vdepthu
+        CASE ( 'V', 'v'           ) ; cv_msk=cn_vmask ; cv_dep=cn_vdepthv
+        CASE ( 'F', 'f'           ) ; cv_msk=cn_fmask ; cv_dep=cn_vdeptht
            ; PRINT *, 'Be carefull with fmask (think of shlat)... !!!'
         CASE DEFAULT                ; PRINT *, ' ERROR : This type of point ', TRIM(ctype),' is not known !' ; STOP 99
         END SELECT
@@ -111,27 +111,18 @@ PROGRAM cdfbottom
 
   IF ( chkfile(cf_in) ) STOP 99  ! missing files
 
+  CALL finddimname(cf_in,cn_x)
+  CALL finddimname(cf_in,cn_y)
+  CALL finddimname(cf_in,cn_z)
+  CALL finddimname(cf_in,cn_t)
+
   npiglo = getdim (cf_in,cn_x)
   npjglo = getdim (cf_in,cn_y)
-
-  ! looking for npk among various possible name
-  idep_max=9
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'gdept','z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-     PRINT *,' assume file with no depth'
-     npk=0
-  ENDIF
+  npk    = getdim (cf_in,cn_z)
 
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo
-  PRINT *, 'npk    = ', npk , 'Dep name :' , TRIM(cv_dep)
+  PRINT *, 'npk    = ', npk
 
   npt   = getdim (cf_in,cn_t)
 
@@ -140,7 +131,7 @@ PROGRAM cdfbottom
 
   ! look for the number of variables in the input file
   nvars = getnvar(cf_in)
-  PRINT *,' nvars =', nvars
+  PRINT *,'nvars =', nvars
 
   ALLOCATE (cv_names(nvars) ,stypvar(nvars))
   ALLOCATE (id_var(nvars), ipk(nvars), id_varout(nvars), ipko(nvars) )
@@ -191,7 +182,7 @@ CONTAINS
     !!
     !!----------------------------------------------------------------------
     ! ipk gives the number of level or 0 if not a T[Z]YX  variable
-    ipk(:)     = getipk (cf_in,nvars,cdep=cv_dep)
+    ipk(:)     = getipk (cf_in,nvars)
     ipko(:)    = 1  ! all variables output are 2D
 
     WHERE( ipk <= 1 ) cv_names='none'
@@ -204,7 +195,8 @@ CONTAINS
     END DO
     ! create output fileset
     ! create output file taking the sizes in cf_in
-    ncout = create      (cf_out,   cf_in  , npiglo, npjglo, 1         , ld_nc4=lnc4 ) ! 1 level file
+    CALL findvarname(cf_in,cv_dep)
+    ncout = create      (cf_out,   cf_in  , npiglo, npjglo, 1         , cdepvar=cv_dep, ld_nc4=lnc4 ) ! 1 level file
     ierr  = createvar   (ncout   , stypvar, nvars , ipko  , id_varout , ld_nc4=lnc4 )
     ierr  = putheadervar(ncout   , cf_in  , npiglo, npjglo, 1         , cdep=cv_dep)
     dtim  = getvar1d(cf_in, cn_vtimec, npt     )
