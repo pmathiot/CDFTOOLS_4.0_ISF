@@ -47,6 +47,7 @@ PROGRAM cdfmltmask
   CHARACTER(LEN=256)                          :: cv_dep             ! depth dim name
   CHARACTER(LEN=256)                          :: cldum              ! dummy string
   CHARACTER(LEN=20)                           :: cv_msk             ! mask variable name
+  CHARACTER(LEN=256)                          :: cn_zmsk            ! mask variable name
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_in            ! cdf variable names to process
 
   LOGICAL                                     :: lnc4 =.FALSE.      ! use Netcdf4 chunking and deflation
@@ -129,38 +130,20 @@ PROGRAM cdfmltmask
   cf_in = cf_out
 
   PRINT *,' Working on copy : ', TRIM(cf_out)
+  cn_zmsk=cn_z
+  CALL finddimname(cf_in, cn_x)
+  CALL finddimname(cf_in, cn_y)
+  CALL finddimname(cf_in, cn_z)
+  CALL finddimname(cf_in, cn_t)
 
-  npiglo = getdim (cf_in,cn_x)
-  npjglo = getdim (cf_in,cn_y)
-  npk    = getdim (cf_in,cn_z, cdtrue=cv_dep, kstatus=ierr)
-
-  IF (ierr /= 0 ) THEN
-     npk   = getdim (cf_in, 'z', cdtrue=cv_dep, kstatus=ierr)
-     IF (ierr /= 0 ) THEN
-       npk   = getdim (cf_in, 'sigma', cdtrue=cv_dep, kstatus=ierr)
-        IF ( ierr /= 0 ) THEN
-          npk = getdim (cf_in, 'nav_lev', cdtrue=cv_dep, kstatus=ierr)
-            IF ( ierr /= 0 ) THEN
-              PRINT *,' assume file with no depth'
-              npk=0
-            ENDIF
-        ENDIF
-     ENDIF
-  ENDIF
-
-  npkmask = getdim (cf_msk, cn_z, cdtrue=cv_dep, kstatus=ierr)
-  IF (ierr /= 0 ) THEN
-     npkmask  = getdim (cf_msk, 'z', cdtrue=cv_dep, kstatus=ierr)
-       IF ( ierr /= 0 ) THEN
-            npkmask = getdim (cf_msk, 'nav_lev', cdtrue=cv_dep, kstatus=ierr)
-            IF ( ierr /= 0 ) THEN
-              PRINT *,' assume file with no depth'
-              npkmask=0
-            ENDIF
-       ENDIF
-  ENDIF
-
+  npiglo  = getdim (cf_in,cn_x)
+  npjglo  = getdim (cf_in,cn_y)
+  npk     = getdim (cf_in,cn_z)
   npt   = getdim (cf_in, cn_t    )
+  
+  CALL finddimname(cf_msk, cn_zmsk)
+  npkmask = getdim (cf_msk, cn_zmsk)
+
   ALLOCATE( nvpk(nvar) )
 
   DO jvar = 1, nvar
@@ -206,20 +189,20 @@ PROGRAM cdfmltmask
      IF (MOD(jt,100)==0) PRINT *, jt,'/', npt
      DO jvar = 1, nvar  ! loop on variables
         DO jk = 1, nvpk(jvar)
-        PRINT *,' Processing level ', jk,' variable ',TRIM(cv_in(jvar))
-        IF ( npkmask > 1 ) THEN
-        ! Read mask
-          zmask(:,:) = getvar(cf_msk, cv_msk, jk, npiglo, npjglo)
-        ENDIF
-          ! Read cv_in
-          zv(:,:) = getvar(cf_in, cv_in(jvar), jk, npiglo, npjglo, ktime=jt)
-          ! Multiplication of cv_in by mask at level jk
-!         zvmask = zv * zmask
-          WHERE ( zmask == 0 ) ; zvmask = zspv0
-          ELSEWHERE            ; zvmask = zv
-          ENDWHERE
-          ! Writing  on the copy of original file                 
-          ierr = putvar(cf_out, cv_in(jvar), jk, npiglo, npjglo, 1, 1, ktime=jt, ptab=zvmask)
+           PRINT *,' Processing level ', jk,' variable ',TRIM(cv_in(jvar))
+           IF ( npkmask > 1 ) THEN
+           ! Read mask
+              zmask(:,:) = getvar(cf_msk, cv_msk, jk, npiglo, npjglo)
+           ENDIF
+           ! Read cv_in
+           zv(:,:) = getvar(cf_in, cv_in(jvar), jk, npiglo, npjglo, ktime=jt)
+           ! Multiplication of cv_in by mask at level jk
+           !zvmask = zv * zmask
+           WHERE ( zmask == 0.0 ) ; zvmask = zspv0
+           ELSEWHERE            ; zvmask = zv
+           ENDWHERE
+           ! Writing  on the copy of original file                 
+           ierr = putvar(TRIM(cf_out), cv_in(jvar), jk, npiglo, npjglo, 1, 1,ktime=jt, ptab=zvmask)
         END DO
      END DO
   END DO
