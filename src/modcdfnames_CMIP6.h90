@@ -1,15 +1,15 @@
   CHARACTER(LEN=256) :: cn_output = 'CMIP6'  
 
   ! Dimension name : cn_. [ 1 letter only ]
-  CHARACTER(LEN=256) :: cn_x='x|lon'               !: longitude, I dimension
-  CHARACTER(LEN=256) :: cn_y='y|lat'               !: latitude,  J dimension
-  CHARACTER(LEN=256) :: cn_z='z|depth|sigma|nav_lev|levels|ncatice|icbcla|icbsect'             !: depth, z dimension
-  CHARACTER(LEN=256) :: cn_t='time_counter|time'   !: time dimension
+  CHARACTER(LEN=256) :: cn_x='|x|lon|'               !: longitude, I dimension
+  CHARACTER(LEN=256) :: cn_y='|y|lat|'               !: latitude,  J dimension
+  CHARACTER(LEN=256) :: cn_z='|z|depth|deptht|depthu|depthv|sigma|nav_lev|levels|ncatice|icbcla|icbsect|'             !: depth, z dimension
+  CHARACTER(LEN=256) :: cn_t='|time_counter|time|'   !: time dimension
 
   ! Dimension variable
   CHARACTER(LEN=256) :: cn_vlon2d  = 'nav_lon'      !: longitude
   CHARACTER(LEN=256) :: cn_vlat2d  = 'nav_lat'      !: latitude
-  CHARACTER(LEN=256) :: cn_vdeptht = 'deptht'       !: depth
+  CHARACTER(LEN=256) :: cn_vdeptht = '|deptht|depth|'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthu = 'depthu'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthv = 'depthv'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthw = 'depthw'       !: depth

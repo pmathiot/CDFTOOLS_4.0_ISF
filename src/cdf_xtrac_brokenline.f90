@@ -307,6 +307,14 @@ PROGRAM cdf_xtract_brokenline
      cn_ve3w = cn_ve3wvvl
   ENDIF
 
+  CALL finddimname(cf_tfil, cn_x)
+  CALL finddimname(cf_tfil, cn_y)
+  CALL finddimname(cf_tfil, cn_z)
+  CALL finddimname(cf_tfil, cn_t)
+
+  CALL findvarname(cf_tfil, cn_votemper)
+  CALL findvarname(cf_tfil, cn_vosaline)
+
   IF ( lice ) THEN 
      ! try to findout the name of ice-concentration and ice thickness (LIM2/LIM3)
      cv_ileadfra = cn_ileadfra
@@ -1220,6 +1228,7 @@ CONTAINS
     ENDIF
 
     ! create output fileset
+    CALL findvarname(cf_tfil,cn_vdeptht)
     ncout(ksec) = create      (cf_out, cf_tfil, npsec(ksec),  1, npk, cdep=cn_vdeptht                    )
     ierr  = createvar   (ncout(ksec),  stypvar, nvar,  ipk, id_varout                                    )
     ierr  = putheadervar(ncout(ksec),  cf_tfil, npsec(ksec)-1,  1, npk, pnavlon=rlonsec, pnavlat=rlatsec )

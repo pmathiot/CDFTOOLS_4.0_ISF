@@ -100,6 +100,14 @@ PROGRAM cdfsig0
   ! Look for missing value for salinity
   zsps = getspval(cf_tfil, cn_vosaline)
 
+  CALL finddimname(cf_tfil, cn_x)
+  CALL finddimname(cf_tfil, cn_y)
+  CALL finddimname(cf_tfil, cn_z)
+  CALL finddimname(cf_tfil, cn_t)
+
+  CALL findvarname(cf_tfil, cv_tem)
+  CALL findvarname(cf_tfil, cv_sal)
+
   npiglo = getdim (cf_tfil, cn_x)
   npjglo = getdim (cf_tfil, cn_y)
   npk    = getdim (cf_tfil, cn_z)
@@ -118,7 +126,7 @@ PROGRAM cdfsig0
   ALLOCATE (dtim(npt) )
 
   CALL CreateOutput
-  zsps = getspval( cf_tfil, cn_vosaline )
+  zsps = getspval( cf_tfil, cv_sal )
 
   DO jt=1,npt
      PRINT *,' TIME = ', jt, dtim(jt)/86400.,' days'
@@ -164,7 +172,8 @@ CONTAINS
     stypvar(1)%ichunk            = (/npiglo, MAX(1,npjglo/30), 1, 1 /)
 
     ! create output fileset
-    ncout = create      (cf_out, cf_tfil, npiglo, npjglo, npk,       ld_nc4=lnc4  )
+    CALL findvarname(cf_tfil, cn_vdeptht)
+    ncout = create      (cf_out, cf_tfil, npiglo, npjglo, npk,       ld_nc4=lnc4, cdep=cn_vdeptht)
     ierr  = createvar   (ncout,  stypvar, 1,      ipk,    id_varout, ld_nc4=lnc4  )
     ierr  = putheadervar(ncout,  cf_tfil, npiglo, npjglo, npk       )
 
