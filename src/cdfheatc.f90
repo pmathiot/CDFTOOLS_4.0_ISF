@@ -152,17 +152,6 @@ PROGRAM cdfheatc
      cn_ve3t = cn_ve3tvvl
   ENDIF
 
-  ! check input file variable name
-  CALL findvarname(cn_fhgr, cn_ve1t)
-  CALL findvarname(cn_fhgr, cn_ve2t)
-  CALL findvarname(cn_fzgr, cn_ve3t1d)
-  CALL findvarname(cf_tfil, cn_votemper)
-  CALL findvarname(cn_fe3t, cn_ve3t)
-  CALL finddimname(cf_tfil,cn_x)
-  CALL finddimname(cf_tfil,cn_y)
-  CALL finddimname(cf_tfil,cn_z)
-  CALL finddimname(cf_tfil,cn_t)
-
   npiglo = getdim (cf_tfil,cn_x)
   npjglo = getdim (cf_tfil,cn_y)
   npk    = getdim (cf_tfil,cn_z)
@@ -302,7 +291,7 @@ CONTAINS
     stypvar(jp_hc2d)%clong_name     = 'Heat Content at each selected level'
     stypvar(jp_hc2d)%cshort_name    = 'heatc2d'
 
-    ncout =  create     (cf_out, 'none',  1,      1, npkk,   cdep='depthw' )
+    ncout =  create     (cf_out, cf_tfil,  1,      1, npkk,   cdimz='depthw' )
     ierr  = createvar   (ncout,  stypvar, ivar, ipk, id_varout             )
     ierr  = putheadervar(ncout,  cf_tfil, 1,      1, npkk,                 &
           &                 pnavlon=zdumlon, pnavlat=zdumlat,              &

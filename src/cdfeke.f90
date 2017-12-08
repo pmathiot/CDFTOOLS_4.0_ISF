@@ -150,6 +150,8 @@ PROGRAM cdfeke
 
   IF ( lchk ) STOP 99 ! missing files
 
+
+
   npiglo = getdim (cf_ufil,cn_x)
   npjglo = getdim (cf_ufil,cn_y)
   npk    = getdim (cf_ufil,cn_z)

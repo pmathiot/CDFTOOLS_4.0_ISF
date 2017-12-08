@@ -125,14 +125,6 @@ PROGRAM cdfcofdis
   jpj = getdim(cf_tfil,cn_y)
   jpk = getdim(cf_tfil,cn_z)
 
-  IF (jpk == 0 ) THEN
-     jpk = getdim(cf_tfil,'z')
-     IF ( jpk == 0 ) THEN
-        PRINT *,' ERROR in determining jpk form gridT file ....'
-        STOP 99
-     ENDIF
-  ENDIF
-
   PRINT *, ' JPI = ', jpi
   PRINT *, ' JPJ = ', jpj
   PRINT *, ' JPK = ', jpk

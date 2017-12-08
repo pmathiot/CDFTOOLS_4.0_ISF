@@ -77,7 +77,6 @@ PROGRAM cdfsmooth
 
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names          ! array of var name
   CHARACTER(LEN=256)                            :: cf_in, cf_out     ! file names
-  CHARACTER(LEN=256)                            :: cv_dep, cv_tim    ! variable name for depth and time
   CHARACTER(LEN=256)                            :: ctyp              ! filter type
   CHARACTER(LEN=256)                            :: cldum             ! dummy character variable
   CHARACTER(LEN=256)                            :: clklist           ! ciphered k-list of level
@@ -186,22 +185,10 @@ PROGRAM cdfsmooth
   ! Look for input file and create outputfile
   npiglo = getdim (cf_in,cn_x)
   npjglo = getdim (cf_in,cn_y)
-  npk    = getdim (cf_in,cn_z, cdtrue=cv_dep, kstatus=ierr)
+  npt    = getdim (cf_in,cn_t)
+  npk    = getdim (cf_in,cn_z)
   npkf   = npk
-  IF ( ierr /= 0 ) THEN
-     npk   = getdim (cf_in,'z', cdtrue=cv_dep, kstatus=ierr)
-     npkf  = npk
-     IF ( ierr /= 0 ) THEN
-        npk   = getdim (cf_in, 'sigma', cdtrue=cv_dep, kstatus=ierr)
-        npkf  = npk
-        IF ( ierr /= 0 ) THEN 
-           PRINT *,' assume file with no depth'
-           npk  = 1  ! Data have 1 level...
-           npkf = 0  ! file have no deptht
-        ENDIF
-     ENDIF
-  ENDIF
-  npt    = getdim (cf_in,cn_t, cdtrue=cv_tim)
+  npk    = MAX(npk,1) ! data have 1 level
 
   PRINT *, 'npiglo = ',npiglo
   PRINT *, 'npjglo = ',npjglo
@@ -216,7 +203,7 @@ PROGRAM cdfsmooth
   ALLOCATE (id_var(nvars),ipk(nvars),id_varout(nvars) )
 
   ALLOCATE ( gdeptmp(npk)  )
-  IF (npkf /= 0 ) THEN ; gdeptmp(:) = getvar1d(cf_in, cv_dep, npk )  
+  IF (npkf /= 0 ) THEN ; gdeptmp(:) = getvar1d(cf_in, cn_z, npk )  
   ELSE                 ; gdeptmp(:) = 0.  ! dummy value
   ENDIF
 
@@ -229,7 +216,7 @@ PROGRAM cdfsmooth
   ENDDO
 
   ! ipk gives the number of level or 0 if not a T[Z]YX  variable
-  ipk(:)     = getipk (cf_in, nvars, cdep=cv_dep)
+  ipk(:)     = getipk (cf_in, nvars)
   WHERE( ipk == 0 ) cv_names='none'
   stypvar(:)%cname=cv_names
 
@@ -247,10 +234,10 @@ PROGRAM cdfsmooth
 
   ! create output file taking the sizes in cf_in
   PRINT *, 'Output file name : ', TRIM(cf_out)
-  ncout = create      (cf_out, cf_in,   npiglo, npjglo, npkf, cdep=cv_dep, ld_nc4=lnc4)
-  ierr  = createvar   (ncout , stypvar, nvars,  ipk,    id_varout        , ld_nc4=lnc4)
-  ierr  = putheadervar(ncout , cf_in,   npiglo, npjglo, npkf, pdep=gdep, cdep=cv_dep)
-  dtim  = getvar1d(cf_in, cv_tim, npt)
+  ncout = create      (cf_out, cf_in,   npiglo, npjglo, npkf, ld_nc4=lnc4 )
+  ierr  = createvar   (ncout , stypvar, nvars, ipk, id_varout, ld_nc4=lnc4)
+  ierr  = putheadervar(ncout , cf_in,   npiglo, npjglo, npkf, pdep=gdep   )
+  dtim  = getvar1d(cf_in, cn_vtimec, npt)
   !
   DO jvar = 1,nvars
      IF ( cv_names(jvar) == cn_vlon2d .OR.                     &

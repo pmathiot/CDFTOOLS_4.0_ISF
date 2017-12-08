@@ -84,7 +84,6 @@ PROGRAM cdfmoy
   CHARACTER(LEN=256)                            :: cf_out4 = 'cdfmoy_minmax.nc'  ! output file for min/max
   CHARACTER(LEN=256)                            :: cf_e3              ! file name for reading vertical metrics (vvl)
   CHARACTER(LEN=256)                            :: cv_single          ! name of the single variable to process ( -var option)
-  CHARACTER(LEN=256)                            :: cv_dep             ! depth dimension name
   CHARACTER(LEN=256)                            :: cv_e3              ! name of e3t variable for vvl
   CHARACTER(LEN=256)                            :: cldum              ! dummy string argument
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cf_lst             ! list of input files
@@ -92,7 +91,6 @@ PROGRAM cdfmoy
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_nam2            ! array of var2 name for output
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_nam3            ! array of var3 name for output
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_nam4            ! array of var3 name for output
-  CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: clv_dep            ! array of possible depth name (or 3rd dimension)
 
   TYPE (variable), DIMENSION(:),    ALLOCATABLE :: stypvar            ! attributes for average values
   TYPE (variable), DIMENSION(:),    ALLOCATABLE :: stypvar2           ! attributes for square averaged values
@@ -223,16 +221,7 @@ PROGRAM cdfmoy
   !
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
-
-  ! looking for npk among various possible name
-  idep_max=8
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
+  npk    = getdim (cf_in, cn_z)
 
   IF ( ierr /= 0 ) THEN  ! none of the dim name was found
      PRINT *,' assume file with no depth'
@@ -241,7 +230,7 @@ PROGRAM cdfmoy
 
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo
-  PRINT *, 'npk    = ', npk , 'Dep name :' , TRIM(cv_dep)
+  PRINT *, 'npk    = ', npk
 
   nvars = getnvar(cf_in)
   PRINT *,' nvars = ', nvars
@@ -615,7 +604,7 @@ CONTAINS
 
     id_var(:)  = (/(jv, jv=1,nvars)/)
     ! ipk gives the number of level or 0 if not a T[Z]YX  variable
-    ipk(:)     = getipk (cf_in,nvars,cdep=cv_dep)
+    ipk(:)     = getipk (cf_in,nvars)
     DO jvar = 1, nvars
        IF (ipk(jvar) == 0) THEN
           PRINT *, TRIM(cv_nam(jvar)),' is skip because of dimension issue'
@@ -634,24 +623,26 @@ CONTAINS
     IF ( lmax   ) stypvar4(:)%cname = cv_nam4
 
     ! create output file taking the sizes in cf_in
-    ncout  = create      (cf_out,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep, ld_nc4=lnc4)
-    ierr   = createvar   (ncout ,  stypvar,  nvars,  ipk,    id_varout       , ld_nc4=lnc4)
-    ierr   = putheadervar(ncout,   cf_in,    npiglo, npjglo, npk, cdep=cv_dep      )
 
-    ncout2 = create      (cf_out2, cf_in,    npiglo, npjglo, npk, cdep=cv_dep, ld_nc4=lnc4)
+    ! get varname needed
+    ncout  = create      (cf_out,  cf_in,    npiglo, npjglo, npk,              ld_nc4=lnc4)
+    ierr   = createvar   (ncout ,  stypvar,  nvars,  ipk,    id_varout       , ld_nc4=lnc4)
+    ierr   = putheadervar(ncout,   cf_in,    npiglo, npjglo, npk )
+
+    ncout2 = create      (cf_out2, cf_in,    npiglo, npjglo, npk,              ld_nc4=lnc4)
     ierr   = createvar   (ncout2,  stypvar2, nvars,  ipk,    id_varout2      , ld_nc4=lnc4)
-    ierr   = putheadervar(ncout2,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep      )
+    ierr   = putheadervar(ncout2,  cf_in,    npiglo, npjglo, npk )
 
     IF ( lcubic) THEN
-       ncout3 = create      (cf_out3, cf_in,    npiglo, npjglo, npk, cdep=cv_dep, ld_nc4=lnc4)
+       ncout3 = create      (cf_out3, cf_in,    npiglo, npjglo, npk,              ld_nc4=lnc4)
        ierr   = createvar   (ncout3,  stypvar3, nvars,  ipk,    id_varout3      , ld_nc4=lnc4)
-       ierr   = putheadervar(ncout3,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep      )
+       ierr   = putheadervar(ncout3,  cf_in,    npiglo, npjglo, npk )
     ENDIF
 
     IF ( lmax ) THEN
-       ncout4 = create      (cf_out4, cf_in,    npiglo, npjglo, npk, cdep=cv_dep, ld_nc4=lnc4)
+       ncout4 = create      (cf_out4, cf_in,    npiglo, npjglo, npk,              ld_nc4=lnc4)
        ierr   = createvar   (ncout4,  stypvar4, 2*nvars,  ipk4,    id_varout4   , ld_nc4=lnc4)
-       ierr   = putheadervar(ncout4,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep      )
+       ierr   = putheadervar(ncout4,  cf_in,    npiglo, npjglo, npk )
     ENDIF
 
   END SUBROUTINE CreateOutput

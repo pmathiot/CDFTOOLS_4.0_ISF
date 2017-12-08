@@ -443,7 +443,7 @@ CONTAINS
   ! create output fileset
   IF (lprint) PRINT *, ' ready to create file:',TRIM( cf_out), ' from reference:',TRIM(cf_vfil )
 
-  ncout = create      (cf_out, cf_vfil, npiglo, npjglo, nbins,    cdep=clsigma           , ld_nc4=lnc4  )
+  ncout = create      (cf_out, cf_vfil, npiglo, npjglo, nbins,    cdimz=clsigma          , ld_nc4=lnc4  )
   ierr  = createvar   (ncout,  stypvar, 2,      ipk,    id_varout, cdglobal=TRIM(cglobal), ld_nc4=lnc4  )
   ierr  = putheadervar(ncout,  cf_vfil, npiglo, npjglo, nbins,     pdep=REAL(dsigma)      )
 

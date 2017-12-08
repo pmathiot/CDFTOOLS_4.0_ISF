@@ -55,7 +55,6 @@ PROGRAM cdfchgrid
   CHARACTER(LEN=256)                            :: cf_ref                 ! reference file for output file
   CHARACTER(LEN=256)                            :: cv_in                  ! variable name
   CHARACTER(LEN=256)                            :: cldum                  ! working string
-  CHARACTER(LEN=256)                            :: cv_dep                 ! true name of dep dimension
   CHARACTER(LEN=256)                            :: cl_trf                 ! conversion key
   CHARACTER(LEN=256)                            :: cglobal                ! Global attribute with command line
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names               ! array of var name
@@ -128,7 +127,7 @@ PROGRAM cdfchgrid
   ! get domain dimension from input file
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
-  npk    = getdim (cf_in, cn_z, cdtrue=cv_dep, kstatus=ierr)  ! defautl cn_z is depth
+  npk    = getdim (cf_in, cn_z)
   npt    = getdim (cf_in, cn_t)
 
   IF ( npt == 0 ) THEN
@@ -191,7 +190,7 @@ PROGRAM cdfchgrid
   END DO
   cglobal="File produced with cdfchgrid "
   CALL SetGlobalAtt( cglobal, "A" )
-  rdep=getvar1d(cf_in,cv_dep,npkk) 
+  rdep=getvar1d(cf_in,cn_z,npkk) 
 
   CALL CreateOutput
 

@@ -268,9 +268,9 @@ CONTAINS
     END DO
 
     ! Initialize output file
-    ncout = create      (cf_out, 'none', 1, 1, npk, cdep=cn_vdepthw, ld_xycoo=.FALSE. )
-    ierr  = createvar   (ncout, stypvar, nvaro, ipk, id_varout                        )
-    ierr  = putheadervar(ncout, cf_in,   1, 1, npk,                  ld_xycoo=.FALSE. )
+    ncout = create      (cf_out, cf_in, 1, 1, npk, cvdep='depthw', ld_xycoo=.FALSE. )
+    ierr  = createvar   (ncout, stypvar, nvaro, ipk, id_varout                     )
+    ierr  = putheadervar(ncout, cf_in, 1, 1, npk,                 ld_xycoo=.FALSE. )
 
     dtim  = getvar1d    (cf_in, cn_vtimec, npt     )
     ierr  = putvar1d    (ncout, dtim,      npt, 'T')

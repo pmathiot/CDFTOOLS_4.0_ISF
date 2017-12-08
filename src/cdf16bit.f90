@@ -112,15 +112,10 @@ PROGRAM cdf16bit
   IF ( chkfile(cf_in)  ) STOP 99 ! missing file
 
   ! get domain dimension from input file
+
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
-  npk    = getdim (cf_in, cn_z, kstatus=ierr)
-
-  IF (ierr /= 0 ) THEN
-     npk   = getdim (cf_in,'z',kstatus=ierr)
-     IF (ierr /= 0 ) THEN ;  PRINT *,' ERROR : depth dimension name not suported' ; STOP 99
-     ENDIF
-  ENDIF
+  npk    = getdim (cf_in, cn_z)
   npt    = getdim (cf_in, cn_t)
 
   ! Allocate memory 

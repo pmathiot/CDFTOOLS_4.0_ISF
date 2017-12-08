@@ -132,7 +132,7 @@ PROGRAM cdfisf_diags
   npjglo = getdim (cf_in,cn_y)
   npk    = getdim (cf_in,cn_z)
   npt    = getdim (cf_in,cn_t)
-  nvpk   = 1
+  nvpk   = 0
 
   IF (iimin /= 0 ) THEN ; npiglo = iimax - iimin + 1;  ELSE ; iimin = 1 ;  ENDIF
   IF (ijmin /= 0 ) THEN ; npjglo = ijmax - ijmin + 1;  ELSE ; ijmin = 1 ;  ENDIF
@@ -258,9 +258,9 @@ CONTAINS
     END DO
 
     ! create output fileset
-    ncout = create      (cf_out, 'none',  ikx,   iky,   nvpk, cdep=cn_gdept)
-    ierr  = createvar   (ncout, stypvar, nisf, ipk,   id_varout, cdglobal=TRIM(cglobal) )
-    ierr  = putheadervar(ncout, cf_in,  ikx, iky, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdep(1:nvpk), cdep=cn_gdept)
+    ncout = create      (cf_out, cf_in, ikx, iky, nvpk)
+    ierr  = createvar   (ncout, stypvar, nisf, ipk, id_varout, cdglobal=TRIM(cglobal) )
+    ierr  = putheadervar(ncout, cf_in,  ikx, iky, nvpk, pnavlon=rdumlon, pnavlat=rdumlat )
 
     ! read/write time variable
     tim   = getvar1d(cf_in, cn_vtimec, npt)

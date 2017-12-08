@@ -191,8 +191,8 @@ PROGRAM cdfcoloc
   IF ( cf_bathy /= 'none' ) THEN ! dealing with special case of etopo file
      llchk = llchk .OR. chkfile(cf_bathy    )
      IF (llchk ) STOP 99 ! missing files
-     npiglo = getdim (cf_bathy,'lon')
-     npjglo = getdim (cf_bathy,'lat')
+     npiglo = getdim (cf_bathy, cn_x)
+     npjglo = getdim (cf_bathy, cn_y)
      npk    = 1
   ELSE
      llchk = llchk .OR. chkfile(cn_fmsk    )

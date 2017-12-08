@@ -117,23 +117,9 @@ PROGRAM cdflinreg
   cf_in=cf_lst(1)  
   IF ( chkfile(cf_in) ) STOP 99 ! missing file
 
-  npiglo = getdim (cf_in,cn_x                             )
-  npjglo = getdim (cf_in,cn_y                             )
-
-  ! looking for npk among various possible name
-  idep_max=8
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-     PRINT *,' assume file with no depth'
-     npk=0
-  ENDIF
+  npiglo = getdim (cf_in,cn_x)
+  npjglo = getdim (cf_in,cn_y)
+  npk    = getdim (cf_in,cn_z)
 
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo
@@ -261,7 +247,7 @@ CONTAINS
     !!
     !!----------------------------------------------------------------------
     ! ipki gives the number of level or 0 if not a T[Z]YX  variable
-    ipki(:) = getipk (cf_in, nvars, cdep=cv_dep)
+    ipki(:) = getipk (cf_in, nvars)
 
     ! for each input variable, create 3 output variables
     DO jvar = 1, nvars
@@ -324,9 +310,9 @@ CONTAINS
     stypvaro(:)%cname = cv_nameso
 
     ! create output file taking the sizes in cf_in
-    ncout  = create      (cf_out, cf_in,    npiglo,  npjglo, npk, cdep=cv_dep , ld_nc4=lnc4 )
+    ncout  = create      (cf_out, cf_in,    npiglo,  npjglo, npk, ld_nc4=lnc4 )
     ierr   = createvar   (ncout,  stypvaro, 3*nvars, ipko,   id_varout        , ld_nc4=lnc4 )
-    ierr   = putheadervar(ncout,  cf_in,    npiglo,  npjglo, npk, cdep=cv_dep )
+    ierr   = putheadervar(ncout,  cf_in,    npiglo,  npjglo, npk)
 
   END SUBROUTINE CreateOutput
 

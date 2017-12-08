@@ -217,9 +217,9 @@ CONTAINS
     ENDDO
 
     ! create output fileset
-    ncout = create      (cf_out, 'none',  ikx,      iky, ikz,     cdep='depth')
+    ncout = create      (cf_out, cf_in, ikx, iky, ikz )
     ierr  = createvar   (ncout,  stypvar, nboutput, ipk, id_varout            )
-    ierr  = putheadervar(ncout,  cf_in,   ikx,      iky, ikz,     pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdepout)
+    ierr  = putheadervar(ncout,  cf_in,  ikx, iky, ikz, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdepout)
 
     dtim = getvar1d(cf_in, cn_vtimec, npt     )
     ierr = putvar1d(ncout, dtim,      npt, 'T')

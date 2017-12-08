@@ -251,7 +251,7 @@ PROGRAM cdfmkmask
   ELSE
      npk  = getdim (cf_tfil,cn_z)
   ENDIF
-  npt    = getdim (cf_tfil,cn_t)
+  npt = getdim (cf_tfil,cn_t)
 
   PRINT *,' npiglo = ', npiglo
   PRINT *,' npjglo = ', npjglo
@@ -274,6 +274,7 @@ PROGRAM cdfmkmask
   ENDIF
 
   ALLOCATE (dtim(npt))
+
   CALL CreateOutput
 
   !! Allocate only usefull variable and read only usefull variable

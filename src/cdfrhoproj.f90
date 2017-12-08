@@ -195,8 +195,8 @@ PROGRAM cdfrhoproj
   ! Read reference density  file
   npiglo = getdim(cf_rhofil,cn_x)
   npjglo = getdim(cf_rhofil,cn_y)
-  npk    = getdim(cf_rhofil,cn_z)
   npt    = getdim(cf_rhofil,cn_t)
+  npk    = getdim(cf_rhofil,cn_z)
 
   IF ( npt > 1 ) THEN
      PRINT *,'  WARNING : more than 1 time step in ',TRIM(cf_rhofil)
@@ -222,7 +222,7 @@ PROGRAM cdfrhoproj
   DO jk=1,npk
      zsig(:,:,jk) = getvar(cf_rhofil, cv_sig, jk, npiglo, npjglo)
   END DO
-  WHERE (zsig < 0.0)
+  WHERE (zsig <= 0.0)
      zsig = zspvali
   END WHERE
 
@@ -525,6 +525,8 @@ CONTAINS
        stypvar(2)%caxis             = 'TRYX'
     ENDIF
 
+    ! get varname needed
+    !
     ncout = create      (cf_out, cf_rhofil, npiglo, npjglo, npsig         , ld_nc4=lnc4 )
     ierr  = createvar   (ncout,  stypvar,   nvout,  ipk,    id_varout     , ld_nc4=lnc4 )
     ierr  = putheadervar(ncout , cf_rhofil, npiglo, npjglo, npsig, pdep=zi              )

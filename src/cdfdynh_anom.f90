@@ -137,6 +137,7 @@ PROGRAM cdfdynh_anom
   ! Look for Missing value for salinity
   zsps = getspval(cf_tfil, cn_vosaline)
 
+
   npiglo = getdim (cf_tfil,cn_x)
   npjglo = getdim (cf_tfil,cn_y)
   npk    = getdim (cf_tfil,cn_z)

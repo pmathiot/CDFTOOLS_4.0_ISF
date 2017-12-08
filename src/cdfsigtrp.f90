@@ -69,7 +69,6 @@ PROGRAM cdfsigtrp
   INTEGER(KIND=4), DIMENSION(:),    ALLOCATABLE :: ipk, id_varout       ! variable levels and id
 
   REAL(KIND=4)                                  :: refdep =0.e0         ! reference depth (m)
-  REAL(KIND=4)                                  :: zsps, zspu, zspv     ! Missing value for salinity, U and V
   REAL(KIND=4), DIMENSION(1)                    :: rdummy1, rdummy2     ! working variable
   REAL(KIND=4), DIMENSION(1)                    :: rdummy3, rdummy4     ! working variable
   REAL(KIND=4), DIMENSION(:),       ALLOCATABLE :: gdept, gdepw         ! depth of T and W points 
@@ -107,7 +106,7 @@ PROGRAM cdfsigtrp
   CHARACTER(LEN=256)                            :: cf_out='trpsig.txt'  ! output  ascii file
   CHARACTER(LEN=256)                            :: cf_nc                ! output netcdf file (2d)
   CHARACTER(LEN=256)                            :: cf_outnc             ! output netcdf file (1d, 0d))
-  CHARACTER(LEN=256)                            :: cf_root              !
+  CHARACTER(LEN=256)                            :: cf_root=''           !
   CHARACTER(LEN=256)                            :: cv_dep               ! depth variable
   CHARACTER(LEN=256)                            :: cldum                ! dummy string
   CHARACTER(LEN=256)                            :: cglobal              ! global attribute
@@ -272,12 +271,6 @@ PROGRAM cdfsigtrp
   lchk = lchk .OR. chkfile( cf_vfil    )
   IF ( lchk ) STOP 99 ! missing file
 
-   ! Look for missing value for salinity, U and V
-   zsps = getspval(cf_tfil, cn_vosaline )
-   zspu = getspval(cf_ufil, cn_vozocrtx )
-   zspv = getspval(cf_vfil, cn_vomecrty )
-
-
   IF ( lg_vvl )  THEN
      cn_fe3u = cf_ufil
      cn_fe3v = cf_vfil
@@ -420,13 +413,12 @@ PROGRAM cdfsigtrp
         ENDDO
         ! normal velocity
         zu( :,:) = getvaryz(cf_ufil, cn_vozocrtx, iimin,   npts, npk, kjmin=ijmin+1 )
-        WHERE( zu == zspu ) zu = 0.0
 
         ! salinity and deduce umask for the section
         zs( :,:) = getvaryz(cf_tfil, cn_vosaline, iimin,   npts, npk, kjmin=ijmin+1 )
         zt( :,:) = getvaryz(cf_tfil, cn_vosaline, iimin+1, npts, npk, kjmin=ijmin+1 )
         zmask = 1.
-        WHERE ( zs == zsps .OR. zt == zsps ) zmask = 0.
+        WHERE ( zs == 0.0 .AND. zt == 0.0 ) zmask = 0.
 
         zs (:,:) = 0.5 * ( zs(:,:) + zt(:,:) )
 
@@ -452,7 +444,6 @@ PROGRAM cdfsigtrp
 
         IF (lbrk ) THEN
            ! need to fix de3, ddepu, zu, zs, zt, nk , zmask
-           PRINT *, ijmin, iimin
            IF ( lfull) THEN 
               DO ji=1, npts
                  de3(ji,:) = e3t1d(:)
@@ -502,14 +493,13 @@ PROGRAM cdfsigtrp
 
            ! normal velocity
            zu( :,:) = getvarxz(cf_vfil, cn_vomecrty, ijmin,   npts, npk, kimin=iimin+1 )
-           WHERE( zu == zspv ) zu = 0.0
 
            ! salinity and deduce umask for the section
            zs( :,:) = getvarxz(cf_tfil, cn_vosaline, ijmin,   npts, npk, kimin=iimin+1 )
            zt( :,:) = getvarxz(cf_tfil, cn_vosaline, ijmin+1, npts, npk, kimin=iimin+1 )
 
            zmask = 1.
-           WHERE ( zs == zsps .OR. zt == zsps ) zmask = 0.
+           WHERE ( zs == 0.0 .AND. zt == 0.0 ) zmask = 0.
            zs (:,:) = 0.5 * ( zs(:,:) + zt(:,:) )
 
            ! limitation to 'wet' points
@@ -797,9 +787,9 @@ CONTAINS
     sl_typvar(ivar)%clong_name     = TRIM(cprefixlongnam)//'Normal_velocity'
     sl_typvar(ivar)%cshort_name    = 'velocity'
 
-    icout = create      (cf_nc, 'none',    npts, 1, nk, cdep=cn_vdeptht                     )
+    icout = create      (cf_nc, cf_tfil, npts, 1, nk )
     ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout, cdglobal=TRIM(cglobal)     )
-    ierr  = putheadervar(icout, cf_tfil,   npts, 1, nk, &
+    ierr  = putheadervar(icout, cf_tfil, npts, 1, nk, &
          &   pnavlon=rlonlat, pnavlat=rlonlat, cdep=cn_vdeptht                              )
 
     !    dtim = getvar1d(cf_tfil, cn_vtimec, 1     )
@@ -852,7 +842,7 @@ CONTAINS
     sl_typvar(ivar)%clong_name     = TRIM(cprefixlongnam)//'cumulated_transport'
     sl_typvar(ivar)%cshort_name    = 'sumtrp'
 
-    icout = create      (cf_nc, 'none',    npts, 1, nbins, cdep='levels'                 )
+    icout = create      (cf_nc, cf_tfil,    npts, 1, nbins, cdimz='levels', cvdep='levels' )
     ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout, cdglobal=TRIM(cglobal)  )
     ierr  = putheadervar(icout, cf_tfil,   npts, 1, nbins, &
          &   pnavlon=rlonlat, pnavlat=rlonlat, pdep=REAL(dsigma_lev), cdep='levels'      )
@@ -944,6 +934,7 @@ CONTAINS
     !!
     !!----------------------------------------------------------------------
     INTEGER(KIND=4), INTENT(in) :: ksec  ! section index
+    INTEGER(KIND=4) :: ndum
     !!----------------------------------------------------------------------
 
     IF ( cvarname(ksec) /= 'none' ) THEN
@@ -1029,7 +1020,7 @@ CONTAINS
     ELSE             ; cf_outnc = TRIM(cf_root)//TRIM(csection(ksec))//'_trpsig.nc'
     ENDIF
 
-    ncout = create      (cf_outnc, 'none',  ikx,      iky, nbins, cdep=cv_dep               )
+    ncout = create      (cf_outnc, cf_tfil, ikx,      iky, nbins, cdimz=cv_dep, cvdep=cv_dep) ! cdimz and cvdep from file ref overwrite by cv_dep
     ierr  = createvar   (ncout,    stypvar, nboutput, ipk, id_varout, cdglobal=TRIM(cglobal))
     ierr  = putheadervar(ncout,    cf_tfil, ikx,      iky, nbins, &
          &   pnavlon=rdumlon, pnavlat=rdumlat, pdep=REAL(dsigma_lev), cdep=cv_dep           )

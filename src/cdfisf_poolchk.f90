@@ -58,10 +58,6 @@ PROGRAM cdfisf_poolchk
   LOGICAL                                        :: lnc4=.FALSE.     ! netcdf4 flag
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
-  ! input file is a mask file, then :
-  cn_t='t'
-  cn_z='z'
-  cn_vdeptht='nav_lev'
 
   narg = iargc()
 
@@ -208,9 +204,9 @@ CONTAINS
     stypvar(2)%cprecision        = 'by'
 
     ! create output file taking the sizes in cf_fill
-    ncout  = create      (cf_out, cf_in,   npiglo, npjglo, npk, cdepvar=cn_vdeptht, ld_nc4=lnc4 )
-    ierr   = createvar   (ncout,  stypvar, 2,   ipk, id_varout,                     ld_nc4=lnc4 )
-    ierr   = putheadervar(ncout,  cf_in,   npiglo, npjglo, npk                                  )
+    ncout  = create      (cf_out, cf_in,   npiglo, npjglo, npk, ld_nc4=lnc4 )
+    ierr   = createvar   (ncout,  stypvar, 2,   ipk, id_varout, ld_nc4=lnc4 )
+    ierr   = putheadervar(ncout,  cf_in,   npiglo, npjglo, npk)
 
     dl_tim(1) = 0.d0
     ierr = putvar1d(ncout, dl_tim, 1, 'T')

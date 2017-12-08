@@ -97,16 +97,8 @@ PROGRAM cdfcsp
 
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
-  npk    = getdim (cf_in, cn_z, kstatus=ierr)
+  npk    = getdim (cf_in, cn_z)
   npt    = getdim (cf_in, cn_t)
-
-  IF (ierr /= 0 ) THEN
-     npk   = getdim (cf_in,'z',kstatus=ierr)
-     IF (ierr /= 0 ) THEN
-        PRINT *, "ASSUME NO VERTICAL DIMENSIONS !"
-        npk=0
-     ENDIF
-  ENDIF
 
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo

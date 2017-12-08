@@ -686,9 +686,9 @@ PROGRAM cdftransport
      ! create output fileset
      CALL set_typvar( stypvar, csection, cvarname, clongname )
      cf_outnc = TRIM(csection)//'_'//TRIM(csfx)//'.nc'
-     ncout    = create      (cf_outnc, 'none',    ikx,      iky, nclass, cdep='depth_class')
-     ierr     = createvar   (ncout,    stypvar,   nvarout,  ipk, id_varout, cdglobal=TRIM(cglobal) )
-     ierr     = putheadervar(ncout,    cf_ufil,   ikx, iky, nclass, pnavlon=rdum, pnavlat=rdum, pdep=rclass )
+     ncout    = create      (cf_outnc, cf_ufil, ikx,      iky, nclass, cdimz='depth_class')
+     ierr     = createvar   (ncout,    stypvar, nvarout,  ipk, id_varout, cdglobal=TRIM(cglobal) )
+     ierr     = putheadervar(ncout,    cf_ufil, ikx, iky, nclass, pnavlon=rdum, pnavlat=rdum, pdep=rclass )
      dtim     = getvar1d    (cf_ufil,  cn_vtimec, npt                )
      ierr     = putvar1d    (ncout,    dtim(itime:itime),      1, 'T')
 

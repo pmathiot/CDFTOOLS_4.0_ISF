@@ -318,7 +318,7 @@ CONTAINS
     stypvar(1)%conline_operation = 'N/A'
     stypvar(1)%caxis             = 'TZYX'
 
-    ncout = create      (cf_out, 'none', npiglo, npjglo, npko, cdep=cn_vdepthw, ld_xycoo=.FALSE. &
+    ncout = create      (cf_out, cf_in, npiglo, npjglo, npko, cvdep='depthw', ld_xycoo=.FALSE. &
          , ld_nc4=lnc4)
     ierr  = createvar   (ncout, stypvar, 1, ipk, id_varout , ld_nc4=lnc4)
     ierr  = putheadervar(ncout, cf_in,   npiglo, npjglo, npko, pdep=gdepo,     ld_xycoo=.FALSE.)

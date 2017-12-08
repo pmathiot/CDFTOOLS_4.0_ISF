@@ -80,7 +80,8 @@ PROGRAM cdfconvert
   LOGICAL                                    :: lexist          ! flag for existing file
   LOGICAL                                    :: lchk = .FALSE.  ! flag for missing files
   !!----------------------------------------------------------------------
-
+  PRINT *, ' NOT UPTODATE with the last cdfio.F90 '
+  STOP
   !!  Read command line
   narg= iargc()
   IF ( narg == 0 ) THEN
@@ -297,7 +298,7 @@ PROGRAM cdfconvert
   gphi = getvar  (cn_fhgr, cn_gphit, 1, npiglo, npjglo)
   zdep = getvare3(cn_fzgr, cn_gdept, npk              )
 
-  ncout = create      (cf_tfil, 'none',  npiglo, npjglo, npk, cdep=cn_vdeptht                       )
+  ncout = create      (cf_tfil, 'none',  npiglo, npjglo, npk, cdimz=cn_vdeptht                       )
   ierr  = createvar   (ncout,   stypvar, nvar,   ipk,    id_varout                                  )
   ierr  = putheadervar(ncout,   'none',  npiglo, npjglo, npk, pnavlon=glam, pnavlat=gphi, pdep=zdep )
 
@@ -432,7 +433,7 @@ PROGRAM cdfconvert
   gphi = getvar  (cn_fhgr, cn_gphiu, 1, npiglo, npjglo)
   zdep = getvare3(cn_fzgr, cn_gdept, npk              )
 
-  ncout = create      (cf_ufil, 'none',  npiglo, npjglo, npk, cdep=cn_vdepthu                       )
+  ncout = create      (cf_ufil, 'none',  npiglo, npjglo, npk, cdimz=cn_vdepthu                       )
   ierr  = createvar   (ncout,   stypvar, nvar,   ipk,    id_varout                                  )
   ierr  = putheadervar(ncout,   'none',  npiglo, npjglo, npk, pnavlon=glam, pnavlat=gphi, pdep=zdep )
 
@@ -519,7 +520,7 @@ PROGRAM cdfconvert
   gphi = getvar  (cn_fhgr, cn_gphiv, 1,  npiglo, npjglo)
   zdep = getvare3(cn_fzgr, cn_gdept, npk               )
 
-  ncout = create      (cf_vfil, 'none',  npiglo, npjglo, npk, cdep=cn_vdepthv                       )
+  ncout = create      (cf_vfil, 'none',  npiglo, npjglo, npk, cdimz=cn_vdepthv                       )
   ierr  = createvar   (ncout,   stypvar, nvar,   ipk,    id_varout                                  )
   ierr  = putheadervar(ncout,   'none',  npiglo, npjglo, npk, pnavlon=glam, pnavlat=gphi, pdep=zdep )
 
@@ -570,7 +571,7 @@ PROGRAM cdfconvert
   gphi = getvar  (cn_fhgr, cn_gphif, 1, npiglo, npjglo)
   zdep = getvare3(cn_fzgr, cn_gdept, 1                )
 
-  ncout = create      (cf_bsfil, 'none',  npiglo, npjglo, 1, cdep=cn_vdepthu                       )
+  ncout = create      (cf_bsfil, 'none',  npiglo, npjglo, 1, cdimz=cn_vdepthu                       )
   ierr  = createvar   (ncout,    stypvar, nvar,   ipk,    id_varout                                )
   ierr  = putheadervar(ncout,    'none',  npiglo, npjglo, 1, pnavlon=glam, pnavlat=gphi, pdep=zdep )
 

@@ -430,8 +430,8 @@ CONTAINS
     END DO
 
     ! create output fileset
-    ncout = create      (cf_out, cf_in,    1,    npjglo, npk,  cdep=cv_depo                                )
-    ierr  = createvar   (ncout,  stypvaro, ivar, ipko,   id_varout                                         )
+    ncout = create      (cf_out, cf_in,    1,    npjglo, npk )
+    ierr  = createvar   (ncout,  stypvaro, ivar, ipko,   id_varout )
     ierr  = putheadervar(ncout,  cf_in,    1,    npjglo, npk,  pnavlon=zdumlon, pnavlat=zdumlat, pdep=gdep )
 
     dtim  = getvar1d(cf_in, cn_vtimec, npt     )

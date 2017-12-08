@@ -487,10 +487,10 @@ PROGRAM cdfsigtrp_broken
         cf_outnc = TRIM(csection(jsec))//'_trpsig.nc'
      ENDIF
 
-     ncout = create      (cf_outnc, 'none',  ikx,      iky, nbins, cdep=cv_dep               )
+     ncout = create      (cf_outnc, cf_brfi, ikx, iky, nbins, cdimz=cv_dep )
      ierr  = createvar   (ncout,    stypvar, nboutput, ipk, id_varout, cdglobal=TRIM(cglobal))
-     ierr  = putheadervar(ncout,    cf_brfi, ikx,      iky, nbins, &
-          &   pnavlon=rdumlon, pnavlat=rdumlat, pdep=REAL(dsigma_lev), cdep=cv_dep           )
+     ierr  = putheadervar(ncout,    cf_brfi, ikx, iky, nbins, &
+          &   pnavlon=rdumlon, pnavlat=rdumlat, pdep=REAL(dsigma_lev), cdep=cv_dep )
 
      dtim = getvar1d(cf_brfi, cn_vtimec, 1     )
      ierr = putvar1d(ncout,   dtim,      1, 'T')
@@ -659,10 +659,10 @@ CONTAINS
     sl_typvar(ivar)%clong_name     = TRIM(cprefixlongnam)//'Normal_velocity'
     sl_typvar(ivar)%cshort_name    = 'velocity'
 
-    icout = create      (cf_nc, 'none',    npts, 1, nk, cdep=cn_vdeptht                     )
+    icout = create      (cf_nc, cf_brfi,    npts, 1, nk )
     ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout, cdglobal=TRIM(cglobal)     )
     ierr  = putheadervar(icout, cf_brfi,   npts, 1, nk, &
-         &   pnavlon=rlonlat, pnavlat=rlonlat, cdep=cn_vdeptht                              )
+         &   pnavlon=rlonlat, pnavlat=rlonlat )
 
     !    dtim = getvar1d(cf_brfi, cn_vtimec, 1     )
     !    ierr = putvar1d(icout,   dtim,      1, 'T')
@@ -714,10 +714,10 @@ CONTAINS
     sl_typvar(ivar)%clong_name     = TRIM(cprefixlongnam)//'cumulated_transport'
     sl_typvar(ivar)%cshort_name    = 'sumtrp'
 
-    icout = create      (cf_nc, 'none',    npts, 1, nbins, cdep='levels'                 )
+    icout = create      (cf_nc, cf_brfi, npts, 1, nbins, cvdep='levels'                 )
     ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout, cdglobal=TRIM(cglobal)  )
-    ierr  = putheadervar(icout, cf_brfi,   npts, 1, nbins, &
-         &   pnavlon=rlonlat, pnavlat=rlonlat, pdep=REAL(dsigma_lev), cdep='levels'      )
+    ierr  = putheadervar(icout, cf_brfi, npts, 1, nbins, &
+         &   pnavlon=rlonlat, pnavlat=rlonlat, pdep=REAL(dsigma_lev))
 
     PRINT *, 'NBINS', nbins, npts
     DO jk = 1, nbins-1

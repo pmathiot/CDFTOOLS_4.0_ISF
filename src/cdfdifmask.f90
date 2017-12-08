@@ -87,9 +87,10 @@ PROGRAM cdfdifmask
   lchk = lchk .OR. chkfile ( cf_msk2 )
   IF ( lchk ) STOP 99 ! missing file
 
+
   npiglo = getdim (cf_msk1, cn_x)
   npjglo = getdim (cf_msk1, cn_y)
-  npk    = getdim (cf_msk1, 'z' )  ! mask file have a z depth dim instead of depth ...
+  npk    = getdim (cf_msk1, cn_z)  ! mask file have a z depth dim instead of depth ...
 
   ALLOCATE (zmask(npiglo,npjglo), zmask2(npiglo,npjglo))
   ALLOCATE ( dtim(1) )
@@ -138,7 +139,7 @@ CONTAINS
     stypvar(3)%cname=cn_vmask ;  stypvar(3)%clong_name=cn_vmask ;  stypvar(3)%cshort_name=cn_vmask
     stypvar(4)%cname=cn_fmask ;  stypvar(4)%clong_name=cn_fmask ;  stypvar(4)%cshort_name=cn_fmask
 
-    ncout = create      (cf_out, cf_msk1, npiglo, npjglo, npk,      cdep='z', cdepvar='nav_lev', ld_nc4=lnc4 )
+    ncout = create      (cf_out, cf_msk1, npiglo, npjglo, npk,      cdimz='z', cvdep='nav_lev', ld_nc4=lnc4 )
     ierr  = createvar   (ncout,  stypvar, 4,      ipk,    id_varout                            , ld_nc4=lnc4 )
     ierr  = putheadervar(ncout,  cf_msk1, npiglo, npjglo, npk,      cdep='nav_lev'                           )
 

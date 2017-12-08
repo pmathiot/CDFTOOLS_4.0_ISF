@@ -461,9 +461,9 @@ CONTAINS
     ENDIF
 
     ! create output fileset
-    ncout = create      (cf_out, cf_in,    1,           npjglo, npk,  cdep=cv_depo                                )
+    ncout = create      (cf_out, cf_in, 1, npjglo, npk )
     ierr  = createvar   (ncout,  stypvaro, ncoef*nvaro, ipko,   id_varout                                         )
-    ierr  = putheadervar(ncout,  cf_in,    1,           npjglo, npk,  pnavlon=zdumlon, pnavlat=zdumlat, pdep=gdep )
+    ierr  = putheadervar(ncout,  cf_in, 1, npjglo, npk,  pnavlon=zdumlon, pnavlat=zdumlat, pdep=gdep )
 
   END SUBROUTINE CreateOutput
 

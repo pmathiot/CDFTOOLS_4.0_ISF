@@ -340,9 +340,9 @@ CONTAINS
     stypvar(8)%cshort_name    = 'SExnsidc'
 
     ! create output fileset
-    ncout = create      (cf_out, 'none',  ikx,      iky, ikz,     cdep='depthw'                   )
-    ierr  = createvar   (ncout,  stypvar, nboutput, ipk, id_varout                                )
-    ierr  = putheadervar(ncout,  cf_ifil, ikx,      iky, ikz,     pnavlon=rdumlon, pnavlat=rdumlat)
+    ncout = create      (cf_out, cf_ifil, ikx, iky, ikz )
+    ierr  = createvar   (ncout,  stypvar, nboutput, ipk, id_varout                            )
+    ierr  = putheadervar(ncout,  cf_ifil, ikx, iky, ikz, pnavlon=rdumlon, pnavlat=rdumlat)
 
     dtim  = getvar1d(cf_ifil, cn_vtimec, npt     )
     ierr  = putvar1d(ncout,  dtim,       npt, 'T')

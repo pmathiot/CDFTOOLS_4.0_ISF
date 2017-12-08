@@ -296,7 +296,7 @@ PROGRAM cdfpsi
            dztrpu(:,:)=  zu(:,:)*e2u(:,:)*e3u(:,:)*1.d0  !  zonal transport of each grid cell
            dtrpu(:,:) = dtrpu(:,:) + dztrpu(:,:)         ! cumul over the depth
            IF ( lssh .AND. (jk == 1 ) ) THEN
-              dtrpsshu(:,:) = dtrpsshu(:,:) + zv(:,:)*e2u(:,:)*zsshu(:,:)*1.d0  ! meridional transport of each grid cell
+              dtrpsshu(:,:) = dtrpsshu(:,:) + zu(:,:)*e2u(:,:)*zsshu(:,:)*1.d0  ! meridional transport of each grid cell
            ENDIF
            IF ( llev ) THEN
               dpsiu(:,:)= 0.d0

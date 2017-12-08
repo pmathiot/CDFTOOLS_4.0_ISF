@@ -54,7 +54,6 @@ PROGRAM cdfmoy_freq
 
   CHARACTER(LEN=256)                            :: cf_in               !
   CHARACTER(LEN=256)                            :: cf_out='cdfmoy_'    ! file name
-  CHARACTER(LEN=256)                            :: cv_dep
   CHARACTER(LEN=256)                            :: cfreq_o             ! output frequency
   CHARACTER(LEN=256)                            :: cldum               ! dummy character arguments
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names            ! array of var nam
@@ -161,21 +160,9 @@ PROGRAM cdfmoy_freq
   END SELECT
 
   ! get domain size from the input file
-  npiglo= getdim (cf_in, cn_x                             )
-  npjglo= getdim (cf_in, cn_y                             )
-  npk   = getdim (cf_in, cn_z, cdtrue=cv_dep, kstatus=ierr)
-
-  IF (ierr /= 0 ) THEN
-     npk   = getdim (cf_in,'z',cdtrue=cv_dep,kstatus=ierr)
-     IF (ierr /= 0 ) THEN
-        npk   = getdim (cf_in,'sigma',cdtrue=cv_dep,kstatus=ierr)
-        IF ( ierr /= 0 ) THEN 
-           PRINT *,' assume file with no depth'
-           npk=0
-        ENDIF
-     ENDIF
-  ENDIF
-
+  npiglo= getdim (cf_in, cn_x)
+  npjglo= getdim (cf_in, cn_y)
+  npk   = getdim (cf_in, cn_z)
   npt   = getdim (cf_in, cn_t)
 
   ! Now look at input file and try to look for input frequency
@@ -361,7 +348,7 @@ CONTAINS
     !!----------------------------------------------------------------------
   id_var(:)  = (/(jv, jv=1,nvars)/)
   ! ipk gives the number of level or 0 if not a T[Z]YX  variable
-  ipk(:)     = getipk (cf_in, nvars, cdep=cv_dep)
+  ipk(:)     = getipk (cf_in, nvars)
   !
   WHERE( ipk == 0 ) cv_names='none'
   stypvar(:)%cname = cv_names
@@ -371,9 +358,9 @@ CONTAINS
 
   ! create output file taking the sizes in cf_in
   cf_out = TRIM(cf_out)//'_'//TRIM(cfreq_o)//'.nc'
-  ncout = create      (cf_out, cf_in,   npiglo, npjglo, npk, cdep=cv_dep , ld_nc4=lnc4 )
+  ncout = create      (cf_out, cf_in,   npiglo, npjglo, npk, ld_nc4=lnc4 )
   ierr  = createvar   (ncout,  stypvar, nvars,  ipk,    id_varout        , ld_nc4=lnc4 )
-  ierr  = putheadervar(ncout,  cf_in,   npiglo, npjglo, npk, cdep=cv_dep               )
+  ierr  = putheadervar(ncout,  cf_in,   npiglo, npjglo, npk)
 
 
   END SUBROUTINE CreateOutput

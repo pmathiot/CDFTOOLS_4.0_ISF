@@ -111,20 +111,16 @@ PROGRAM cdfbottom
 
   IF ( chkfile(cf_in) ) STOP 99  ! missing files
 
-  CALL finddimname(cf_in,cn_x)
-  CALL finddimname(cf_in,cn_y)
-  CALL finddimname(cf_in,cn_z)
-  CALL finddimname(cf_in,cn_t)
 
   npiglo = getdim (cf_in,cn_x)
   npjglo = getdim (cf_in,cn_y)
   npk    = getdim (cf_in,cn_z)
+  npt    = getdim (cf_in,cn_t)
 
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo
   PRINT *, 'npk    = ', npk
-
-  npt   = getdim (cf_in,cn_t)
+  PRINT *, 'npt    = ', npt
 
   ALLOCATE (zfield(npiglo,npjglo), zbot(npiglo,npjglo), zmask(npiglo,npjglo))
   ALLOCATE (dtim(npt) )
@@ -195,8 +191,8 @@ CONTAINS
     END DO
     ! create output fileset
     ! create output file taking the sizes in cf_in
-    CALL findvarname(cf_in,cv_dep)
-    ncout = create      (cf_out,   cf_in  , npiglo, npjglo, 1         , cdepvar=cv_dep, ld_nc4=lnc4 ) ! 1 level file
+    !
+    ncout = create      (cf_out,   cf_in  , npiglo, npjglo, 1         , ld_nc4=lnc4 ) ! 1 level file
     ierr  = createvar   (ncout   , stypvar, nvars , ipko  , id_varout , ld_nc4=lnc4 )
     ierr  = putheadervar(ncout   , cf_in  , npiglo, npjglo, 1         , cdep=cv_dep)
     dtim  = getvar1d(cf_in, cn_vtimec, npt     )

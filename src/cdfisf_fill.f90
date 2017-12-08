@@ -121,21 +121,7 @@ PROGRAM cdfisf_fill
 
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
-
-  ! looking for npk among various possible name
-  idep_max=4
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','nav_lev','levels'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-     PRINT *,' assume file with no depth'
-     npk=0
-  ENDIF
+  npk    = getdim (cf_in, cn_z) 
 
   PRINT *, 'NPIGLO = ', npiglo
   PRINT *, 'NPJGLO = ', npjglo
@@ -238,9 +224,9 @@ CONTAINS
     stypvar(1)%cprecision        = 'i2'
 
     ! create output file taking the sizes in cf_in
-    ncout  = create      (cf_out,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep, ld_nc4=lnc4)
-    ierr   = createvar   (ncout ,  stypvar,  1,  ipk,    id_varout           , ld_nc4=lnc4)
-    ierr   = putheadervar(ncout,   cf_in,    npiglo, npjglo, npk, cdep=cv_dep             )
+    ncout  = create      (cf_out,  cf_in,    npiglo, npjglo, npk, ld_nc4=lnc4)
+    ierr   = createvar   (ncout ,  stypvar,  1,  ipk,    id_varout, ld_nc4=lnc4)
+    ierr   = putheadervar(ncout,   cf_in,    npiglo, npjglo, npk )
 
     dl_tim(1)=0.d0
     ierr  = putvar1d(ncout, dl_tim, 1, 'T')

@@ -133,11 +133,13 @@ PROGRAM cdfbotpressure
   lchk = chkfile ( cn_fzgr ) .OR. lchk
   IF ( lchk ) STOP 99 ! missing files
 
+  ! get vvl variable name 
   IF ( lg_vvl ) THEN 
      cn_fe3t = cf_in
      cn_ve3t = cn_ve3tvvl
   ENDIF
 
+  ! Get dimension size
   npiglo = getdim (cf_in, cn_x )
   npjglo = getdim (cf_in, cn_y )
   npk    = getdim (cf_in, cn_z )

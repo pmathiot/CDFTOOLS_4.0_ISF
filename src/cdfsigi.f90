@@ -111,7 +111,7 @@ PROGRAM cdfsigi
   ALLOCATE (dtim(npt) )
 
   CALL CreateOutput
-  zspval= getatt(cf_tfil, cn_vosaline, cn_missing_value)
+
   DO jt = 1, npt
      PRINT *,'time: ',jt
      DO jk = 1, npk
@@ -120,7 +120,7 @@ PROGRAM cdfsigi
         ztemp(:,:) = getvar(cf_tfil, cn_votemper,  jk, npiglo, npjglo, ktime=jt)
         zsal( :,:) = getvar(cf_tfil, cn_vosaline,  jk, npiglo, npjglo, ktime=jt)
 
-        WHERE( zsal == zspval ) zmask = 0
+        WHERE( zsal == 0.0 ) zmask = 0
 
         zsigi(:,:) = sigmai(ztemp, zsal, ref_dep, npiglo, npjglo )* zmask(:,:)
 

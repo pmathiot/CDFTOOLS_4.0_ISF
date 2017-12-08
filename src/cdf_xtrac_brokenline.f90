@@ -307,14 +307,6 @@ PROGRAM cdf_xtract_brokenline
      cn_ve3w = cn_ve3wvvl
   ENDIF
 
-  CALL finddimname(cf_tfil, cn_x)
-  CALL finddimname(cf_tfil, cn_y)
-  CALL finddimname(cf_tfil, cn_z)
-  CALL finddimname(cf_tfil, cn_t)
-
-  CALL findvarname(cf_tfil, cn_votemper)
-  CALL findvarname(cf_tfil, cn_vosaline)
-
   IF ( lice ) THEN 
      ! try to findout the name of ice-concentration and ice thickness (LIM2/LIM3)
      cv_ileadfra = cn_ileadfra
@@ -391,6 +383,8 @@ PROGRAM cdf_xtract_brokenline
 
   ! 2. Find the model F-points along the legs of the section
   ! --------------------------------------------------------
+
+
   npiglo = getdim (cf_tfil, cn_x)
   npjglo = getdim (cf_tfil, cn_y)
   npk    = getdim (cf_tfil, cn_z)
@@ -936,6 +930,7 @@ CONTAINS
     !!----------------------------------------------------------------------
     INTEGER(KIND=4), INTENT(in) :: ksec  ! section index
     INTEGER(KIND=4)             :: ivar  ! variable index
+    CHARACTER(LEN=256) :: cvar
     !!----------------------------------------------------------------------
     ivar = 1
 
@@ -947,45 +942,49 @@ CONTAINS
 
     ! define new variables for output 
     np_tem = ivar
-    stypvar(ivar)%cname       = cn_votemper
+    cvar=findvarname(cf_tfil,cn_votemper)
+    stypvar(ivar)%cname       = cvar
     stypvar(ivar)%cunits      = 'deg C'
     stypvar(ivar)%valid_min   = -2.
     stypvar(ivar)%valid_max   = 40.
     stypvar(ivar)%clong_name  = 'Temperature along '//TRIM(csection(ksec))//' section'
-    stypvar(ivar)%cshort_name = cn_votemper
+    stypvar(ivar)%cshort_name = cvar
     stypvar(ivar)%caxis       = 'TZX'
     ipk(ivar)                 = npk
     ivar = ivar + 1
 
     np_sal = ivar
-    stypvar(ivar)%cname       = cn_vosaline
+    cvar=findvarname(cf_tfil,cn_vosaline)
+    stypvar(ivar)%cname       = cvar
     stypvar(ivar)%cunits      = 'PSU'
     stypvar(ivar)%valid_min   = 0.
     stypvar(ivar)%valid_max   = 50.
     stypvar(ivar)%clong_name  = 'Salinity along '//TRIM(csection(ksec))//' section'
-    stypvar(ivar)%cshort_name = cn_vosaline
+    stypvar(ivar)%cshort_name = cvar
     stypvar(ivar)%caxis       = 'TZX'
     ipk(ivar)                 = npk
     ivar = ivar + 1
 
     np_una = ivar
-    stypvar(ivar)%cname       = TRIM(cn_vozocrtx)//'_native'
+    cvar=findvarname(cf_ufil,cn_vozocrtx)
+    stypvar(ivar)%cname       = TRIM(cvar)//'_native'
     stypvar(ivar)%cunits      = 'm.s-1'
     stypvar(ivar)%valid_min   = -20.
     stypvar(ivar)%valid_max   = 20.
     stypvar(ivar)%clong_name  = 'Zonal velocity along '//TRIM(csection(ksec))//' section'
-    stypvar(ivar)%cshort_name = TRIM(cn_vozocrtx)//'_native'
+    stypvar(ivar)%cshort_name = TRIM(cvar)//'_native'
     stypvar(ivar)%caxis       = 'TZX'
     ipk(ivar)                 = npk
     ivar = ivar + 1
 
     np_vna = ivar
-    stypvar(ivar)%cname       = TRIM(cn_vomecrty)//'_native'
+    cvar=findvarname(cf_vfil,cn_vomecrty)
+    stypvar(ivar)%cname       = TRIM(cvar)//'_native'
     stypvar(ivar)%cunits      = 'm.s-1'
     stypvar(ivar)%valid_min   = -20.
     stypvar(ivar)%valid_max   = 20.
     stypvar(ivar)%clong_name  = 'Meridionnal velocity along '//TRIM(csection(ksec))//' section'
-    stypvar(ivar)%cshort_name = TRIM(cn_vomecrty)//'_native'
+    stypvar(ivar)%cshort_name = TRIM(cvar)//'_native'
     stypvar(ivar)%caxis       = 'TZX'
     ipk(ivar)                 = npk
     ivar = ivar + 1
@@ -1039,12 +1038,13 @@ CONTAINS
     ivar = ivar + 1
 
     np_vmod = ivar
-    stypvar(ivar)%cname       = cn_vomecrty
+    cvar=findvarname(cf_vfil,cn_vomecrty)
+    stypvar(ivar)%cname       = cvar
     stypvar(ivar)%cunits      = 'm.s-1'
     stypvar(ivar)%valid_min   = -20.
     stypvar(ivar)%valid_max   = 20.
     stypvar(ivar)%clong_name  = 'Normal velocity along '//TRIM(csection(ksec))//' section'
-    stypvar(ivar)%cshort_name = cn_vomecrty
+    stypvar(ivar)%cshort_name = cvar
     stypvar(ivar)%caxis       = 'TZX'
     ipk(ivar)                 =  npk
     ivar = ivar + 1
@@ -1083,12 +1083,13 @@ CONTAINS
     ivar = ivar + 1
 
     np_e3v = ivar
-    stypvar(ivar)%cname       = cn_ve3v
+    cvar=findvarname(cf_vfil,cn_ve3v)
+    stypvar(ivar)%cname       = cvar
     stypvar(ivar)%cunits      = 'm'
     stypvar(ivar)%valid_min   = 0.
     stypvar(ivar)%valid_max   = 100000000.
     stypvar(ivar)%clong_name  = 'Local vert. resolution along '//TRIM(csection(ksec))//' section'
-    stypvar(ivar)%cshort_name = cn_ve3v
+    stypvar(ivar)%cshort_name = cvar
     stypvar(ivar)%caxis       = 'TZX'
     ipk(ivar)                 =  npk
     ivar = ivar + 1
@@ -1130,12 +1131,13 @@ CONTAINS
 
     IF ( lssh ) THEN
        np_ssh = ivar
-       stypvar(ivar)%cname       = cn_sossheig
+       cvar=findvarname(cf_tfil,cn_sossheig)
+       stypvar(ivar)%cname       = cvar
        stypvar(ivar)%cunits      = 'm'
        stypvar(ivar)%valid_min   = 0.
        stypvar(ivar)%valid_max   = 1000000.
        stypvar(ivar)%clong_name  = 'SSH  along '//TRIM(csection(ksec))//' section'
-       stypvar(ivar)%cshort_name = cn_sossheig
+       stypvar(ivar)%cshort_name = cvar
        stypvar(ivar)%caxis       = 'TX'
        ipk(ivar)                 = 1
        ivar = ivar + 1
@@ -1143,12 +1145,13 @@ CONTAINS
 
     IF ( lmld ) THEN
        np_mld = ivar
-       stypvar(ivar)%cname       = cn_somxl010
+       cvar=findvarname(cf_tfil,cn_somxl010)
+       stypvar(ivar)%cname       = cvar
        stypvar(ivar)%cunits      = 'm'
        stypvar(ivar)%valid_min   = 0.
        stypvar(ivar)%valid_max   = 100000.
        stypvar(ivar)%clong_name  = 'Mixed Layer Depth 0.01  along '//TRIM(csection(ksec))//' section'
-       stypvar(ivar)%cshort_name = cn_somxl010
+       stypvar(ivar)%cshort_name = cvar
        stypvar(ivar)%caxis       = 'TX'
        ipk(ivar)                 = 1
        ivar = ivar + 1
@@ -1156,18 +1159,20 @@ CONTAINS
 
     IF ( lice ) THEN
        np_icethick = ivar
-       stypvar(ivar)%cname       = cn_iicethic
+       cvar=findvarname(cf_ifil,cn_iicethic)
+       stypvar(ivar)%cname       = cvar
        stypvar(ivar)%cunits      = 'm'
        stypvar(ivar)%valid_min   = -10000.
        stypvar(ivar)%valid_max   = 1000000.
        stypvar(ivar)%clong_name  = 'icethick along '//TRIM(csection(ksec))//' section'
-       stypvar(ivar)%cshort_name = cn_iicethic
+       stypvar(ivar)%cshort_name = cvar
        stypvar(ivar)%caxis       = 'TX'
        ipk(ivar)                 = 1
        ivar = ivar + 1
 
        np_icefra = ivar
-       stypvar(ivar)%cname       = cv_ileadfra
+       cvar=findvarname(cf_ifil,cn_ileadfra)
+       stypvar(ivar)%cname       = cvar
        stypvar(ivar)%cunits      = 'm'
        stypvar(ivar)%valid_min   = -10000.
        stypvar(ivar)%valid_max   = 1000000.
@@ -1228,8 +1233,8 @@ CONTAINS
     ENDIF
 
     ! create output fileset
-    CALL findvarname(cf_tfil,cn_vdeptht)
-    ncout(ksec) = create      (cf_out, cf_tfil, npsec(ksec),  1, npk, cdep=cn_vdeptht                    )
+    !
+    ncout(ksec) = create      (cf_out, cf_tfil, npsec(ksec),  1, npk                                     )
     ierr  = createvar   (ncout(ksec),  stypvar, nvar,  ipk, id_varout                                    )
     ierr  = putheadervar(ncout(ksec),  cf_tfil, npsec(ksec)-1,  1, npk, pnavlon=rlonsec, pnavlat=rlatsec )
     dtim  = getvar1d    (cf_tfil, cn_vtimec, npt                                                         )

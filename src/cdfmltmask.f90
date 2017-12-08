@@ -131,17 +131,12 @@ PROGRAM cdfmltmask
 
   PRINT *,' Working on copy : ', TRIM(cf_out)
   cn_zmsk=cn_z
-  CALL finddimname(cf_in, cn_x)
-  CALL finddimname(cf_in, cn_y)
-  CALL finddimname(cf_in, cn_z)
-  CALL finddimname(cf_in, cn_t)
 
   npiglo  = getdim (cf_in,cn_x)
   npjglo  = getdim (cf_in,cn_y)
   npk     = getdim (cf_in,cn_z)
   npt   = getdim (cf_in, cn_t    )
   
-  CALL finddimname(cf_msk, cn_zmsk)
   npkmask = getdim (cf_msk, cn_zmsk)
 
   ALLOCATE( nvpk(nvar) )

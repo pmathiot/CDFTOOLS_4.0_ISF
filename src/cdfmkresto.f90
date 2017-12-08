@@ -272,10 +272,9 @@ CONTAINS
     stypvar(1)%clong_name     = 'Restoring coefficent'
     stypvar(1)%cshort_name    = cv_out
 
-    ncout = create      (cf_out, 'none',  npiglo, npjglo, npk  ,cdep='deptht', ld_nc4=lnc4 )
-    ierr  = createvar   (ncout,  stypvar,  1,     ipk,        id_varout,       ld_nc4=lnc4 )
-    ierr  = putheadervar(ncout,  cf_coord,  npiglo, npjglo, npk ,  &
-         pnavlon=glamt, pnavlat=gphit, pdep=gdept_1d, cdep=cn_vdeptht )
+    ncout = create      (cf_out, cf_coord,  npiglo, npjglo, npk, cvdep='z', ld_nc4=lnc4 )
+    ierr  = createvar   (ncout,  stypvar,  1,     ipk,        id_varout,    ld_nc4=lnc4 )
+    ierr  = putheadervar(ncout,  cf_coord,  npiglo, npjglo, npk, pnavlon=glamt, pnavlat=gphit, pdep=gdept_1d)
 
     ALLOCATE (dtim(1) )
     dtim = 0.d0
@@ -375,7 +374,7 @@ CONTAINS
        ENDDO
        CLOSE(inum)
     ELSE
-       npk = getdim(cn_fzgr,'z')   ! depth dimension in mesh_zgr is 'z' 
+       npk = getdim(cn_fzgr,cn_z)   ! depth dimension in mesh_zgr is 'z' 
        ALLOCATE( gdept_1d(npk) )
        gdept_1d(:) =  getvare3(cn_fzgr, cn_gdept, npk)
     ENDIF

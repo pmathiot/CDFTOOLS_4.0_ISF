@@ -119,13 +119,12 @@ PROGRAM cdfbn2
   lchk = lchk .OR. chkfile (cf_tfil  )
   IF (lg_vvl ) lchk = lchk .OR. chkfile (cf_e3w) 
   IF ( lchk  ) STOP 99  ! missing files 
-  ! Look for missing value for salinity
-  zsps = getspval(cf_tfil, cn_vosaline)
 
   IF ( lg_vvl ) THEN
     cn_fe3w = cf_e3w
     cn_ve3w = cn_ve3wvvl
   ENDIF
+
 
   npiglo = getdim (cf_tfil, cn_x)
   npjglo = getdim (cf_tfil, cn_y)
@@ -168,7 +167,7 @@ PROGRAM cdfbn2
         zmask(:,:)=1.
         ztemp(:,:,iup)= getvar(cf_tfil, cn_votemper, jk-1, npiglo, npjglo, ktime=jt)
         zsal(:,:,iup) = getvar(cf_tfil, cn_vosaline, jk-1, npiglo, npjglo, ktime=jt)
-        WHERE(zsal(:,:,idown) == zsps ) zmask = 0
+        WHERE(zsal(:,:,idown) == 0 ) zmask = 0
 
         IF ( lfull ) THEN ; e3w(:,:) = e3w1d(jk)
         ELSE              ; e3w(:,:) = getvar(cn_fe3w, cn_ve3w , jk, npiglo, npjglo, ktime=it, ldiom=.NOT.lg_vvl )

@@ -1,21 +1,21 @@
   CHARACTER(LEN=256) :: cn_output = 'CMIP6'  
 
   ! Dimension name : cn_. [ 1 letter only ]
-  CHARACTER(LEN=256) :: cn_x='|x|lon|'               !: longitude, I dimension
-  CHARACTER(LEN=256) :: cn_y='|y|lat|'               !: latitude,  J dimension
-  CHARACTER(LEN=256) :: cn_z='|z|depth|deptht|depthu|depthv|sigma|nav_lev|levels|ncatice|icbcla|icbsect|'             !: depth, z dimension
-  CHARACTER(LEN=256) :: cn_t='|time_counter|time|'   !: time dimension
+  CHARACTER(LEN=256) :: cn_x='|x|X|lon|x_grid_T|x_grid_U|x_grid_V|x_grid_W|'               !: longitude, I dimension
+  CHARACTER(LEN=256) :: cn_y='|y|Y|lat|y_grid_T|y_grid_U|y_grid_V|y_grid_W|'               !: latitude,  J dimension
+  CHARACTER(LEN=256) :: cn_z='|z|depth|deptht|depthu|depthv|depthw|sigma|nav_lev|levels|ncatice|icbcla|icbsect|'             !: depth, z dimension
+  CHARACTER(LEN=256) :: cn_t='|time_counter|time|t|'   !: time dimension
 
   ! Dimension variable
-  CHARACTER(LEN=256) :: cn_vlon2d  = 'nav_lon'      !: longitude
-  CHARACTER(LEN=256) :: cn_vlat2d  = 'nav_lat'      !: latitude
-  CHARACTER(LEN=256) :: cn_vdeptht = '|deptht|depth|'       !: depth
+  CHARACTER(LEN=256) :: cn_vlon2d  = '|nav_lon|lon|nav_lon_grid_T|nav_lon_grid_U|nav_lon_grid_V|'      !: longitude
+  CHARACTER(LEN=256) :: cn_vlat2d  = '|nav_lat|lat|nav_lat_grid_T|nav_lat_grid_U|nav_lat_grid_V|'      !: latitude
+  CHARACTER(LEN=256) :: cn_vdeptht = '|deptht|depth|nav_lev|'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthu = 'depthu'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthv = 'depthv'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthw = 'depthw'       !: depth
-  CHARACTER(LEN=256) :: cn_vtimec  = 'time_centered'!: time 
-  CHARACTER(LEN=256) :: cn_vlon1d  = 'lon'          !: longitude 1d
-  CHARACTER(LEN=256) :: cn_vlat1d  = 'lat'          !: latitude  1d
+  CHARACTER(LEN=256) :: cn_vtimec  = '|time_centered|time|time_counter|' !: time 
+  CHARACTER(LEN=256) :: cn_vlon1d  = '|lon|longitude|'                   !: longitude 1d
+  CHARACTER(LEN=256) :: cn_vlat1d  = '|lat|latitude|'                    !: latitude  1d
 
   ! Attribute of a variable
   CHARACTER(LEN=256) :: cn_missing_value = '_FillValue' !: missing value (to be replaced bby _Fill_Value)
@@ -25,17 +25,17 @@
   CHARACTER(LEN=256) :: cn_ve1u='e1u', cn_ve2u='e2u'   !: e.u
   CHARACTER(LEN=256) :: cn_ve1v='e1v', cn_ve2v='e2v'   !: e.v
   CHARACTER(LEN=256) :: cn_ve1f='e1f', cn_ve2f='e2f'   !: e.v
-  CHARACTER(LEN=256) :: cn_ve3t1d='e3t_0'              !: e3. (1D). 
-  CHARACTER(LEN=256) :: cn_ve3w1d='e3w_0'              !: e3. (1D). 
-  CHARACTER(LEN=256) :: cn_ve3t='e3t_0', cn_ve3w='e3w_0'   !: e3. ( 3D). 
-  CHARACTER(LEN=256) :: cn_ve3u='e3u_0', cn_ve3v='e3v_0'   !: e3.
+  CHARACTER(LEN=256) :: cn_ve3t1d='|e3t_1d|e3t|e3t_0|'              !: e3. (1D). 
+  CHARACTER(LEN=256) :: cn_ve3w1d='|e3w_1d|e3w|e3w_0|'              !: e3. (1D). 
+  CHARACTER(LEN=256) :: cn_ve3t='|e3t_0|e3t|thkcello|', cn_ve3w='|e3w_0|e3w|thkcello|'   !: e3. ( 3D). 
+  CHARACTER(LEN=256) :: cn_ve3u='|e3u_0|e3u|thkcello|', cn_ve3v='|e3v_0|e3v|thkcello|'   !: e3.
   ! VVL case [ In CPMIP so far, only one name is used. ]
   CHARACTER(LEN=256) :: cn_ve3tvvl='thkcello', cn_ve3wvvl='thkcello'   !: e3. (3D). 
   CHARACTER(LEN=256) :: cn_ve3uvvl='thkcello', cn_ve3vvvl='thkcello'   !: e3.
 
   CHARACTER(LEN=256) :: cn_vff='ff'
 
-  CHARACTER(LEN=256) :: cn_gdept='gdept', cn_gdepw='gdepw'   !: 1d dep variable
+  CHARACTER(LEN=256) :: cn_gdept='|gdept_1d|gdept|gdept_0|', cn_gdepw='|gdepw_1d|gdepw|gdepw_0|'   !: 1d dep variable
   CHARACTER(LEN=256) :: cn_hdept='hdept', cn_hdepw='hdepw'   !: 2d dep variable
 
   CHARACTER(LEN=256) :: cn_depu3d='depu3d', cn_depw3d='depw3d' !: Local depth U and W in broken line extraction
@@ -69,23 +69,26 @@
   CHARACTER(LEN=256) :: cn_fbasins='subbasin.nc'
 
   ! Variable name  : cn_v... [ starts with cn_v ]
-  CHARACTER(LEN=256) :: cn_votemper='thetao|votemper|temp|temperature'   !: temperature
-  CHARACTER(LEN=256) :: cn_vosaline='so'       !: salinity
+  CHARACTER(LEN=256) :: cn_votemper='|thetao|votemper|temp|temperature|'   !: temperature
+  CHARACTER(LEN=256) :: cn_vosaline='|so|vosaline|salinity|sal|'       !: salinity
   CHARACTER(LEN=256) :: cn_votemper2='thetao_sqd' !: squared temperature
   CHARACTER(LEN=256) :: cn_vosaline2='so_sqd'  !: squared salinity
-  CHARACTER(LEN=256) :: cn_vozocrtx='uo'       !: zonal velocity
-  CHARACTER(LEN=256) :: cn_vomecrty='vo'       !: meridional velocity
+  CHARACTER(LEN=256) :: cn_vozocrtx='|uo|vozocrtx|'       !: zonal velocity
+  CHARACTER(LEN=256) :: cn_vomecrty='|vo|vomecrty|'       !: meridional velocity
   CHARACTER(LEN=256) :: cn_vozocrtx2='u2o'     !: squared velocity
   CHARACTER(LEN=256) :: cn_vomecrty2='v2o'     !: squared velocity
   CHARACTER(LEN=256) :: cn_vomeeivv='vomeeivv' !: meridional Eddy Induced Velocity ! NOT A CMIP6 VARIABLE (only eiv transport asked)
   CHARACTER(LEN=256) :: cn_vovecrtz='wo'       !: vertical velocity
   CHARACTER(LEN=256) :: cn_vovecrtz2='w2o'     !: squared vertical velocity
-  CHARACTER(LEN=256) :: cn_sossheig='zos'      !: Dynamic Sea Surface Height
+  CHARACTER(LEN=256) :: cn_sossheig='|zos|ssh|sossheig|'      !: Dynamic Sea Surface Height
   CHARACTER(LEN=256) :: cn_sossheig2='zossq'   !: Squared Dynamic Sea Surface Height
   CHARACTER(LEN=256) :: cn_somxldep='mlotst'   !: Mixed layer depth (density criterium 0.03kg m-3, Eq H43 Griffies et al., 2016)
   CHARACTER(LEN=256) :: cn_somxl010='somxl010' !: Mixed layer depth (density criterium)      
   CHARACTER(LEN=256) :: cn_somxlt02='somxlt02' !: Mixed layer depth (temperature criterium)
   CHARACTER(LEN=256) :: cn_sozotaux='tauuo'    !: Zonal wind stress
+
+  CHARACTER(LEN=256) :: cn_sss='|sss|sos|'         !: Sea surface salinity
+  CHARACTER(LEN=256) :: cn_sst='|sst|tos|'         !: Sea surface temperature
 
   CHARACTER(LEN=256) :: cn_sohefldo='hfds'     !: Total Heat FLux
   CHARACTER(LEN=256) :: cn_solhflup='solhflup' !: Latent Heat FLux 

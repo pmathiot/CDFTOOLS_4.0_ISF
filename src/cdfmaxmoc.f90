@@ -34,7 +34,7 @@ PROGRAM cdfmaxmoc
   INTEGER(KIND=4)                             :: ikmin, ikmax      ! depth window where to look at extrema
   INTEGER(KIND=4)                             :: ilatmin, ilatmax  ! index of found extrema (latitude)
   INTEGER(KIND=4)                             :: idepmin, idepmax  ! index of found extrema (depth )
-  INTEGER(KIND=4)                             :: nx=1, ny=1, nz=1  ! dims of netcdf output file
+  INTEGER(KIND=4)                             :: nx=1, ny=1, nz=0  ! dims of netcdf output file
   INTEGER(KIND=4)                             :: nvarout=6         ! number of values to write in cdf output
   INTEGER(KIND=4)                             :: ncout, ierr       ! for netcdf output
   INTEGER(KIND=4), DIMENSION(3)               :: iminloc, imaxloc  ! work arrays for minloc and maxloc
@@ -230,11 +230,9 @@ CONTAINS
     stypvar(5:6)%valid_max    = 0.
 
     ! create output fileset
-    ncout = create      (cf_ncout, 'none',  nx,      ny,  nz,      cdep=cn_vdepthw )
+    ncout = create      (cf_ncout, cf_moc, nx, ny, nz )
     ierr  = createvar   (ncout,    stypvar, nvarout, ipk, id_varout                )
-
-    ierr  = putheadervar(ncout,    cf_moc,  nx,      ny,  nz,      &
-         &     pnavlon=rdumlon, pnavlat=rdumlat,   pdep=gdepw           )
+    ierr  = putheadervar(ncout,    cf_moc, nx, ny,  nz, pnavlon=rdumlon, pnavlat=rdumlat )
 
     dtim = getvar1d(cf_moc,cn_vtimec, 1     )
     ierr = putvar1d(ncout, dtim,      1, 'T')

@@ -147,6 +147,7 @@ PROGRAM cdfdiv
      cn_ve3t = cn_ve3tvvl
   ENDIF
 
+
   npiglo = getdim(cf_ufil,cn_x)
   npjglo = getdim(cf_ufil,cn_y)
   npk    = getdim(cf_ufil,cn_z)
@@ -421,8 +422,8 @@ CONTAINS
     ipk(1) = nlev  !  nlevel so far
 
     ! create output fileset
-    ncout = create      (cf_out, cf_ufil, npiglo, npjglo, nlev, cdep=cn_vdepthu, ld_nc4=lnc4 )
-    ierr  = createvar   (ncout ,   stypvar, 1 ,   ipk,    id_varout,             ld_nc4=lnc4 )
+    ncout = create      (cf_out, cf_ufil, npiglo, npjglo, nlev, ld_nc4=lnc4 )
+    ierr  = createvar   (ncout ,   stypvar, 1, ipk, id_varout, ld_nc4=lnc4 )
     ierr  = putheadervar(ncout,  'dummy', npiglo, npjglo, nlev, pnavlon=zun, pnavlat=zvn, pdep=gdep)
 
     dtim = getvar1d(cf_ufil, cn_vtimec, npt      )

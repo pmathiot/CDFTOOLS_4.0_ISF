@@ -32,7 +32,7 @@ PROGRAM cdfvFWov
   INTEGER(KIND=4)                            :: npk, npt            ! size of the domain
   INTEGER(KIND=4)                            :: ierr                ! error status of I/O
   INTEGER(KIND=4)                            :: ncout               ! ncid of output file
-  INTEGER(KIND=4)                            :: ikx=1, iky=1, ikz=1 ! dims of netcdf output file
+  INTEGER(KIND=4)                            :: ikx=1, iky=1, ikz=0 ! dims of netcdf output file
   INTEGER(KIND=4)                            :: nboutput = 3        ! number of output variables
   INTEGER(KIND=4), DIMENSION(:), ALLOCATABLE :: ipk, id_varout      ! output variables properties
 
@@ -290,9 +290,9 @@ CONTAINS
     WRITE(cglobal,'(a,f5.1,a)' ) 'comment : Reference salinity ', dp_rsal,' transport is positive northward'
 
     !! prepare output file
-    ncout = create      (cf_out, 'none',  ikx,      iky, ikz,       cdep='depthw'                    )
+    ncout = create      (cf_out, cf_vfil, ikx, iky, ikz )
     ierr  = createvar   (ncout,  stypvar, nboutput, ipk, id_varout, cdglobal=TRIM(cglobal)           )
-    ierr  = putheadervar(ncout,  cf_vfil, ikx,      iky, ikz,       pnavlon=rdumlon, pnavlat=rdumlat )
+    ierr  = putheadervar(ncout,  cf_vfil, ikx, iky, ikz, pnavlon=rdumlon, pnavlat=rdumlat )
 
     dtim  = getvar1d(cf_vfil, cn_vtimec, npt)
     ierr  = putvar1d(ncout,   dtim,      npt, 'T')

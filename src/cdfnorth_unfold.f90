@@ -124,24 +124,10 @@ PROGRAM cdfnorth_unfold
   WRITE(cglobal,9000) 'cdfnorth_unfold ',TRIM(cf_in), ijatl, ijpacif, TRIM(cpivot), TRIM(ctype)
 9000 FORMAT(a,a,2i5,a,1x,a)
 
-  npiglo = getdim (cf_in, cn_x                             )
-  npjglo = getdim (cf_in, cn_y                             )
-  npt    = getdim (cf_in, cn_t                             )
-
-  ! looking for npk among various possible name
-  idep_max=8
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-      PRINT *,' assume file with no depth'
-      npk=0
-  ENDIF
+  npiglo = getdim (cf_in, cn_x)
+  npjglo = getdim (cf_in, cn_y)
+  npk    = getdim (cf_in, cn_z)
+  npt    = getdim (cf_in, cn_t)
 
   ! to be improved
   npiarctic = npiglo/2
@@ -155,7 +141,7 @@ PROGRAM cdfnorth_unfold
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo
   PRINT *, 'npt    = ', npt
-  PRINT *, 'npk    = ', npk , 'Dep name :' , TRIM(cv_dep)
+  PRINT *, 'npk    = ', npk 
 
   ALLOCATE( tab(npiarctic, npjarctic),  v2d(npiglo,npjglo), dtim(npt)  )
   ALLOCATE( tablon(npiarctic, npjarctic), tablat(npiarctic, npjarctic) )
@@ -346,7 +332,7 @@ CONTAINS
     !!
     !!----------------------------------------------------------------------
   ! ipk gives the number of level or 0 if not a T[Z]YX  variable
-  ipk(:)     = getipk (cf_in, nvars, cdep=cv_dep)
+  ipk(:)     = getipk (cf_in, nvars)
 
   WHERE( ipk == 0 ) cv_names = 'none'
   stypvar(:)%cname = cv_names
@@ -362,9 +348,9 @@ CONTAINS
   CALL unfold(v2d ,tablat, ijatl, ijpacif, cpivot, ctype, 1)
 
   ! create output file taking the sizes in cf_in
-  ncout = create      (cf_out, cf_in,   npiarctic, npjarctic, npk,                                 cdep=cv_dep, ld_nc4=lnc4)
-  ierr  = createvar   (ncout,  stypvar, nvars,     ipk,       id_varout, cdglobal=TRIM(cglobal)               , ld_nc4=lnc4)
-  ierr  = putheadervar(ncout,  cf_in,   npiarctic, npjarctic, npk, pnavlon=tablon, pnavlat=tablat, cdep=cv_dep)
+  ncout = create      (cf_out, cf_in,   npiarctic, npjarctic, npk, ld_nc4=lnc4)
+  ierr  = createvar   (ncout,  stypvar, nvars,     ipk,       id_varout, cdglobal=TRIM(cglobal), ld_nc4=lnc4)
+  ierr  = putheadervar(ncout,  cf_in,   npiarctic, npjarctic, npk, pnavlon=tablon, pnavlat=tablat)
 
   dtim = getvar1d(cf_in, cn_vtimec, npt     )
   ierr = putvar1d(ncout, dtim,      npt, 'T')

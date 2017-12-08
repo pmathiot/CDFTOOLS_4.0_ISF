@@ -236,7 +236,7 @@ CONTAINS
     stypvar(1)%caxis             = 'TZYX'
 
     ! create output fileset
-    ncout = create      (cf_out, cf_ufil,  npiglo, npjglo, npk, cdep=cn_vdepthw  , ld_nc4=lnc4 )
+    ncout = create      (cf_out, cf_ufil,  npiglo, npjglo, npk, cdimz='depthw'  , ld_nc4=lnc4 )
     ierr  = createvar   (ncout , stypvar,  1,      ipk,    id_varout,              ld_nc4=lnc4 )
     ierr  = putheadervar(ncout,  'dummy',  npiglo, npjglo, npk, glamt, gphit, gdepw            )
 

@@ -43,15 +43,15 @@ MODULE modCdfNames
   CHARACTER(LEN=256) :: cn_ve1f='e1f', cn_ve2f='e2f'   !: e.v
   CHARACTER(LEN=256) :: cn_ve3t1d='e3t'                !: e3 1d
   CHARACTER(LEN=255) :: cn_ve3w1d='e3w'                !: e3. (1D). 
-  CHARACTER(LEN=256) :: cn_ve3t='e3t', cn_ve3w='e3w'   !: e3. (3D). 
-  CHARACTER(LEN=256) :: cn_ve3u='e3u', cn_ve3v='e3v'   !: e3.
+  CHARACTER(LEN=256) :: cn_ve3t='e3t_0', cn_ve3w='e3w_0'   !: e3. (3D). 
+  CHARACTER(LEN=256) :: cn_ve3u='e3u_0', cn_ve3v='e3v_0'   !: e3.
   ! VVL case
   CHARACTER(LEN=256) :: cn_ve3tvvl='e3t', cn_ve3wvvl='e3w'   !: e3. (3D). 
   CHARACTER(LEN=256) :: cn_ve3uvvl='e3u', cn_ve3vvvl='e3v'   !: e3.
 
   CHARACTER(LEN=256) :: cn_vff='ff'
 
-  CHARACTER(LEN=256) :: cn_gdept='gdept', cn_gdepw='gdepw'   !: 1d dep variable
+  CHARACTER(LEN=256) :: cn_gdept='|gdept|deptht|gdept_1d|', cn_gdepw='|gdepw|depthw|gdepw_1d|'   !: 1d dep variable
   CHARACTER(LEN=256) :: cn_hdept='hdept', cn_hdepw='hdepw'   !: 2d dep variable
 
   CHARACTER(LEN=256) :: cn_depu3d='depu3d', cn_depw3d='depw3d' !: Local depth U and W in broken line extraction
@@ -74,12 +74,12 @@ MODULE modCdfNames
  
 
   ! Generic mesh-mask file names  cn_f...
-  CHARACTER(LEN=256) :: cn_fzgr='mesh_zgr.nc'
-  CHARACTER(LEN=256) :: cn_fe3t='mesh_zgr.nc'
-  CHARACTER(LEN=256) :: cn_fe3u='mesh_zgr.nc'
-  CHARACTER(LEN=256) :: cn_fe3v='mesh_zgr.nc'
-  CHARACTER(LEN=256) :: cn_fe3w='mesh_zgr.nc'
-  CHARACTER(LEN=256) :: cn_fhgr='mesh_hgr.nc'
+  CHARACTER(LEN=256) :: cn_fzgr='mesh.nc'
+  CHARACTER(LEN=256) :: cn_fe3t='mesh.nc'
+  CHARACTER(LEN=256) :: cn_fe3u='mesh.nc'
+  CHARACTER(LEN=256) :: cn_fe3v='mesh.nc'
+  CHARACTER(LEN=256) :: cn_fe3w='mesh.nc'
+  CHARACTER(LEN=256) :: cn_fhgr='mesh.nc'
   CHARACTER(LEN=256) :: cn_fmsk='mask.nc'
   CHARACTER(LEN=256) :: cn_fcoo='coordinates.nc'
   CHARACTER(LEN=256) :: cn_fbasins='new_maskglo.nc'
@@ -95,6 +95,9 @@ MODULE modCdfNames
   CHARACTER(LEN=256) :: cn_somxl010='somxl010' !: Mixed layer depth (density criterion)
   CHARACTER(LEN=256) :: cn_somxlt02='somxlt02' !: Mixed layer depth (temperature criterion)
   CHARACTER(LEN=256) :: cn_sozotaux='sozotaux' !: Zonal wind stress
+
+  CHARACTER(LEN=256) :: cn_sss='|sss|'         !: Sea surface salinity
+  CHARACTER(LEN=256) :: cn_sst='|sst|'         !: Sea surface temperature
 
   CHARACTER(LEN=256) :: cn_sohefldo='sohefldo' !: Total Heat FLux
   CHARACTER(LEN=256) :: cn_solhflup='solhflup' !: Latent Heat FLux 
@@ -220,7 +223,8 @@ MODULE modCdfNames
     ! variables 
     NAMELIST/namvars/ cn_votemper, cn_vosaline
     NAMELIST/namvars/ cn_vozocrtx, cn_vomecrty, cn_vomeeivv, cn_vovecrtz
-    NAMELIST/namvars/ cn_sossheig, cn_somxl010, cn_somxlt02
+    NAMELIST/namvars/ cn_sossheig, cn_somxl010, cn_somxlt02, cn_sozotaux
+    NAMELIST/namvars/ cn_sst, cn_sss
     NAMELIST/namvars/ cn_sohefldo, cn_solhflup, cn_sosbhfup
     NAMELIST/namvars/ cn_solwfldo, cn_soshfldo
     NAMELIST/namvars/ cn_sowaflup, cn_sowaflcd, cn_sowafldp, cn_iowaflup

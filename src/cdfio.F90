@@ -213,13 +213,13 @@ CONTAINS
        END DO
     ELSE                        ! no reference file
        SELECT CASE (TRIM(cdvar) )
-       CASE ('nav_lon', 'lon', 'x', 'longitude' )
+       CASE ('nav_lon', 'lon', 'x', 'longitude','nav_lon_grid_T','nav_lon_grid_U','nav_lon_grid_V' )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'units',     'degrees_east')
           istatus=NF90_PUT_ATT(kcout, kidvar, 'valid_min', -180.         )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'valid_max',  180.         )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'long_name', 'Longitude'   )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'nav_model', 'Default grid')
-       CASE ('nav_lat' ,'lat', 'y', 'latitude' )
+       CASE ('nav_lat' ,'lat', 'y', 'latitude','nav_lat_grid_T','nav_lat_grid_U','nav_lat_grid_V' )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'units',    'degrees_north')
           istatus=NF90_PUT_ATT(kcout, kidvar, 'valid_min', -90.          )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'valid_max',  90.          )
@@ -254,7 +254,7 @@ CONTAINS
   INTEGER(KIND=4) FUNCTION getincid(cdfile, cvar, incid_ref)
      CHARACTER(LEN=*), INTENT(in) :: cdfile, cvar
      INTEGER(KIND=4) , INTENT(in) :: incid_ref
-     IF (chkvar(cdfile, cvar) .OR. incid_ref==-9999) THEN
+     IF ( chkvar(cdfile, cvar) ) THEN
         getincid=-9999
      ELSE
         getincid=incid_ref
@@ -262,8 +262,8 @@ CONTAINS
 
   END FUNCTION getincid
 
-  INTEGER(KIND=4) FUNCTION create( cdfile, cdfilref ,kx,ky,kz ,cdep, cdepvar, &
-       &                           cdlonvar, cdlatvar,  ld_xycoo, ld_nc4 )
+  INTEGER(KIND=4) FUNCTION create( cdfile, cdfilref ,kx,ky,kz ,cdimz, cdimx, cdimy, cdimt, &
+       &                           cdlonvar, cdlatvar,  ld_xycoo, ld_nc4, cvlon2d, cvlat2d, cvtime, cvdep )
     !!---------------------------------------------------------------------
     !!                  ***  FUNCTION create  ***
     !!
@@ -275,19 +275,68 @@ CONTAINS
     !!----------------------------------------------------------------------
     CHARACTER(LEN=*),           INTENT(in) :: cdfile, cdfilref ! input file and reference file
     INTEGER(KIND=4),            INTENT(in) :: kx, ky, kz       ! dimension of the variable
-    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cdep     ! name of vertical dim name if not standard
-    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cdepvar  ! name of vertical var name if it differs
+    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cdimz                     ! name of vertical dim name if not standard
+    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cdimx, cdimy, cdimt       ! name of vertical dim name if not standard
+    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cvdep                     ! name of vertical var name if it differs
+    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cvlon2d, cvlat2d, cvtime  ! name of lat, lon, time var name if it differs
                                                        ! from vertical dimension name
     CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cdlonvar ! name of 1D longitude
     CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cdlatvar ! name of 1D latitude
     LOGICAL,          OPTIONAL, INTENT(in) :: ld_xycoo ! if false then DO NOT read nav_lat nav_lat from input file
     LOGICAL,          OPTIONAL, INTENT(in) :: ld_nc4   ! create NETCDF4 file with chunking and deflation
 
-    INTEGER(KIND=4)               :: istatus, icout, incid, incid_ref, idum
+    INTEGER(KIND=4)               :: ierr, istatus, icout, incid, incid_ref, idum
     INTEGER(KIND=4) ,DIMENSION(4) :: invdim
-    CHARACTER(LEN=256)            :: cldep, cldepref, cldepvar, clonvar, clatvar
+    CHARACTER(LEN=256)            :: clvdep, clvlon2d, clvlat2d, clvtimec, cldepvar, clonvar, clatvar, cldimx, cldimy, cldimt, cldimz
     LOGICAL                       :: ll_xycoo, ll_nc4
     !!----------------------------------------------------------------------
+    ! get dimname
+    IF ( TRIM(cdfilref) /= 'none' ) THEN
+       ! find dimension name from ref file
+       cldimx = finddimname(cdfilref,cn_x)
+       cldimy = finddimname(cdfilref,cn_y)
+       cldimt = finddimname(cdfilref,cn_t)
+       ! case z dimension needed, default name is the vertical dimension list
+       IF ( kz /= 0 ) THEN 
+          ! PM IF to improve print (rm warning in print as it is overwrite
+          ! later)
+          IF (.NOT. PRESENT(cdimz)) cldimz = finddimname(cdfilref,cn_z)
+          IF (.NOT. PRESENT(cvdep)) clvdep = cldimz
+       END IF
+       clvlon2d = findvarname(cdfilref, cn_vlon2d)
+       clvlat2d = findvarname(cdfilref, cn_vlat2d)
+       clvtimec = findvarname(cdfilref, cn_vtimec)
+    !
+    ELSE
+       ierr=0
+       IF (.NOT. (PRESENT(cdimx) .AND. PRESENT(cdimy) .AND. PRESENT(cdimt))) THEN
+          PRINT *, ' Dimension not define in create, add cdimx, dimy, cdimt or fileref'
+          ierr = ierr+1
+       END IF
+       IF (.NOT. (PRESENT(cvlon2d) .AND. PRESENT(cvlat2d) .AND. PRESENT(cvtime))) THEN
+          PRINT *, ' Variable not define in create, add cvlon2d, cvlat2d, cvtimec or fileref'
+          ierr = ierr+1
+       END IF
+       IF ( kz /= 0 ) THEN
+          IF (.NOT. (PRESENT(cdimz) .AND. PRESENT(cvdep))) THEN
+             PRINT *, ' Dimension and variable not define in create, add cdimz and cvdep or fileref'
+             ierr=ierr+1
+          ENDIF
+       END IF
+       IF (ierr > 0) STOP 98
+    END IF
+
+    ! overwrite by argument if present (refile or not)
+    IF (PRESENT(cdimz) .AND. kz /= 0 ) cldimz = cdimz
+    IF (PRESENT(cdimx)) cldimx = cdimx
+    IF (PRESENT(cdimy)) cldimy = cdimy
+    IF (PRESENT(cdimt)) cldimt = cdimt
+
+    IF (PRESENT(cvlon2d)) clvlon2d = cvlon2d 
+    IF (PRESENT(cvlat2d)) clvlat2d = cvlat2d 
+    IF (PRESENT(cvtime )) clvtimec = cvtime
+    IF (PRESENT(cvdep  ) .AND. kz /= 0 ) clvdep = cvdep
+
     IF ( PRESENT (ld_nc4 ) ) THEN 
        ll_nc4 = ld_nc4
     ELSE
@@ -296,39 +345,26 @@ CONTAINS
 #if defined key_netcdf4
     IF ( ll_nc4 ) THEN
       istatus = NF90_CREATE(cdfile,cmode=or(NF90_CLOBBER,NF90_NETCDF4     ), ncid=icout)
-      IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE in create'    ; STOP 98 ; ENDIF
+      IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE nc4 in create'    ; STOP 98 ; ENDIF
     ELSE
       istatus = NF90_CREATE(cdfile,cmode=or(NF90_CLOBBER,NF90_64BIT_OFFSET), ncid=icout)
-      IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE in create'    ; STOP 98 ; ENDIF
+      IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE nc3 in create'    ; STOP 98 ; ENDIF
     ENDIF
 #else
     istatus = NF90_CREATE(cdfile,cmode=or(NF90_CLOBBER,NF90_64BIT_OFFSET), ncid=icout)
-    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE in create'    ; STOP 98 ; ENDIF
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CREATE nc in create'    ; STOP 98 ; ENDIF
 #endif
-    istatus = NF90_DEF_DIM(icout, cn_x, kx, nid_x)
+    istatus = NF90_DEF_DIM(icout, cldimx, kx, nid_x)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM x in create'    ; STOP 98 ; ENDIF
-    istatus = NF90_DEF_DIM(icout, cn_y, ky, nid_y)
+    istatus = NF90_DEF_DIM(icout, cldimy, ky, nid_y)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM y in create'    ; STOP 98 ; ENDIF
     
     IF ( kz /= 0 ) THEN
-       ! try to find out the name I will use for depth dimension in the new file ...
-       IF (PRESENT (cdep) ) THEN
-          cldep = cdep
-          idum=getdim(cdfilref,cldep,cldepref)   ! look for depth dimension name in ref file
-         IF (cldepref =='unknown' ) cldepref=cdep
-       ELSE 
-          idum=getdim(cdfilref,cn_z,cldep   )   ! look for depth dimension name in ref file
-          cldepref=cldep
-       ENDIF
-       cldepvar=cldep
-       istatus = NF90_DEF_DIM(icout,TRIM(cldep),kz, nid_z)
+       istatus = NF90_DEF_DIM(icout,cldimz,kz, nid_z)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_DIM z in create'    ; STOP 98 ; ENDIF
-       IF (PRESENT (cdepvar) ) THEN
-         cldepvar=cdepvar
-       ENDIF
     ENDIF
 
-    CALL ERR_HDL(NF90_DEF_DIM(icout,cn_t,NF90_UNLIMITED, nid_t),'NF90_DEF_DIM t in create ('//TRIM(cn_t)//')')
+    CALL ERR_HDL(NF90_DEF_DIM(icout,cldimt,NF90_UNLIMITED, nid_t),'NF90_DEF_DIM t in create ('//TRIM(cldimt)//')')
 
     invdim(1) = nid_x ; invdim(2) = nid_y ; invdim(3) = nid_z ; invdim(4) = nid_t
 
@@ -347,13 +383,13 @@ CONTAINS
     ENDIF 
     ! define variables and copy attributes
     IF ( ll_xycoo ) THEN
-       istatus = NF90_DEF_VAR(icout,cn_vlon2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lon)
+       istatus = NF90_DEF_VAR(icout,clvlon2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lon)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lon in create'    ; STOP 98 ; ENDIF
-       incid=getincid(cdfilref, cn_vlon2d, incid_ref) ; istatus = copyatt(cn_vlon2d, nid_lon,incid,icout)
+       incid=getincid(cdfilref, clvlon2d, incid_ref) ; istatus = copyatt(clvlon2d, nid_lon,incid,icout)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt lon in create'    ; STOP 98 ; ENDIF
-       incid=getincid(cdfilref, cn_vlat2d, incid_ref) ; istatus = NF90_DEF_VAR(icout,cn_vlat2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lat)
+       incid=getincid(cdfilref, clvlat2d, incid_ref) ; istatus = NF90_DEF_VAR(icout,clvlat2d,NF90_FLOAT,(/nid_x, nid_y/), nid_lat)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lat in create'    ; STOP 98 ; ENDIF
-       incid=getincid(cdfilref, cn_vlat2d, incid_ref) ; istatus = copyatt(cn_vlat2d, nid_lat,incid,icout)
+       incid=getincid(cdfilref, clvlat2d, incid_ref) ; istatus = copyatt(clvlat2d, nid_lat,incid,icout)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt lat in create'    ; STOP 98 ; ENDIF
     ENDIF
     IF ( PRESENT(cdlonvar) ) THEN
@@ -365,16 +401,16 @@ CONTAINS
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR lat1d in create'    ; STOP 98 ; ENDIF
     ENDIF
     IF ( kz /= 0 ) THEN
-       istatus = NF90_DEF_VAR(icout,TRIM(cldepvar),NF90_FLOAT,(/nid_z/), nid_dep)
-       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR ',TRIM(cldepvar),' in create'    ; STOP 98 ; ENDIF
+       istatus = NF90_DEF_VAR(icout,TRIM(clvdep),NF90_FLOAT,(/nid_z/), nid_dep)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR ',TRIM(clvdep),' in create'    ; STOP 98 ; ENDIF
        ! JMM bug fix : if cdep present, then chose attribute from cldepref
-       incid=getincid(cdfilref, cldepvar, incid_ref) ; istatus = copyatt(TRIM(cldepvar), nid_dep,incid,icout)
-       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt ',TRIM(cldepvar),' in create'    ; STOP 98 ; ENDIF
+       incid=getincid(cdfilref, clvdep, incid_ref) ; istatus = copyatt(TRIM(clvdep), nid_dep,incid,icout)
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt ',TRIM(clvdep),' in create'    ; STOP 98 ; ENDIF
     ENDIF
 
-    istatus = NF90_DEF_VAR(icout,cn_vtimec,NF90_DOUBLE,(/nid_t/), nid_tim)
+    istatus = NF90_DEF_VAR(icout,clvtimec,NF90_DOUBLE,(/nid_t/), nid_tim)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR t in create'    ; STOP 98 ; ENDIF
-    incid=getincid(cdfilref, cn_vtimec, incid_ref) ; istatus = copyatt(cn_vtimec, nid_tim,incid,icout)
+    incid=getincid(cdfilref, clvtimec, incid_ref) ; istatus = copyatt(clvtimec, nid_tim,incid,icout)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt t in create'    ; STOP 98 ; ENDIF
 
     ! Add Global General attribute at first call
@@ -464,18 +500,18 @@ CONTAINS
          IF ( ll_nc4 ) THEN
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv), & 
                   &               chunksizes=sdtyvar(jv)%ichunk(1:idims), deflate_level=1 )
-          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar'    ; STOP 98 ; ENDIF
+          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar ',TRIM(sdtyvar(jv)%cname)    ; STOP 98 ; ENDIF
          ELSE
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv) )
-          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar'    ; STOP 98 ; ENDIF
+          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar ',TRIM(sdtyvar(jv)%cname)    ; STOP 98 ; ENDIF
          ENDIF
 #else
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv) )
-          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar'    ; STOP 98 ; ENDIF
+          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar ',TRIM(sdtyvar(jv)%cname)    ; STOP 98 ; ENDIF
 #endif
           ! add attributes
           istatus = putatt(sdtyvar(jv), kout, kidvo(jv), cdglobal=cdglobal)
-          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'putatt in createvar'    ; STOP 98 ; ENDIF
+          IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'putatt in createvar ',TRIM(sdtyvar(jv)%cname)    ; STOP 98 ; ENDIF
           createvar=istatus
        ENDIF
     END DO
@@ -718,19 +754,17 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in) :: cdfile  ! file name
     CHARACTER(LEN=*), INTENT(in) :: cdvar   ! var name
     CHARACTER(LEN=*), INTENT(in) :: cdatt   ! attribute name to look for
-
+    CHARACTER(LEN=256) :: clvar
     INTEGER(KIND=4) :: istatus, jv, incid, idum
     !!----------------------------------------------------------------------
+    clvar=findvarname(cdfile, cdvar)
     istatus = NF90_OPEN  (cdfile, NF90_NOWRITE, incid)
-    istatus = NF90_INQ_VARID(incid, cdvar, idum)
-
-    IF ( istatus /= NF90_NOERR) PRINT *, TRIM(NF90_STRERROR(istatus)),' when looking for ',TRIM(cdvar),' in getatt.'
-
-    istatus = NF90_GET_ATT(incid, idum, cdatt, getatt)
+    istatus = istatus + NF90_INQ_VARID(incid, clvar, idum)
+    istatus = istatus + NF90_GET_ATT(incid, idum, cdatt, getatt)
     IF ( istatus /= NF90_NOERR ) THEN
        PRINT *,' getatt problem :',NF90_STRERROR(istatus)
        PRINT *,' attribute :', TRIM(cdatt)
-       PRINT *,' variable  :', TRIM(cdvar)
+       PRINT *,' variable  :', TRIM(clvar)
        PRINT *,' file      :', TRIM(cdfile)
        PRINT *,' return default 0 '
        getatt=0.
@@ -855,40 +889,31 @@ CONTAINS
     LOGICAL            :: lexact   = .false.
     LOGICAL, SAVE      :: ll_first = .true.
     !!-----------------------------------------------------------
-    clnam = '-------------'
+
+    clnam = finddimname(cdfile, cdim_name) ! set to unknown in case of no match
 
     IF ( PRESENT(kstatus)  ) kstatus=0
-    IF ( PRESENT(ldexact)  ) lexact=ldexact
-    IF ( cdim_name == cn_x ) lexact=.true.  ! fix for XIOS files having now a new dimension xaxis_bound which match getdim ('x') ....
-                                            ! more clever fix must be found for identification of the dimensions in the input files
+
     istatus=NF90_OPEN(cdfile, NF90_NOWRITE, incid)
     IF ( istatus == NF90_NOERR ) THEN
        istatus=NF90_INQUIRE(incid, ndimensions=idims)
-
-       IF ( lexact ) THEN
-          istatus=NF90_INQ_DIMID(incid, cdim_name, id_dim)
-          IF (istatus /= NF90_NOERR ) THEN
-            PRINT *,NF90_STRERROR(istatus)
-            PRINT *,' Exact dimension name ', TRIM(cdim_name),' not found in ',TRIM(cdfile) ; STOP 98
-          ENDIF
-          istatus=NF90_INQUIRE_DIMENSION(incid, id_dim, len=getdim)
-          IF ( PRESENT(cdtrue) ) cdtrue=cdim_name
-          jdim = 0
-       ELSE  ! scann all dims to look for a partial match
-         DO jdim = 1, idims
-            istatus=NF90_INQUIRE_DIMENSION(incid, jdim, name=clnam, len=getdim)
-            IF ( INDEX(clnam, TRIM(cdim_name)) /= 0 ) THEN
-               IF ( PRESENT(cdtrue) ) cdtrue=clnam
-               EXIT
-            ENDIF
-         ENDDO
-       ENDIF
-
-       IF ( jdim > idims ) THEN   ! dimension not found
+       
+       istatus=istatus + NF90_INQ_DIMID(incid, TRIM(clnam), id_dim)
+       istatus=istatus + NF90_INQUIRE_DIMENSION(incid, id_dim, len=getdim)
+       
+       ! error message in case   
+       IF (istatus /= NF90_NOERR .AND. lexact) THEN
+          PRINT *,' Exact dimension name ', TRIM(clnam),' not found in ',TRIM(cdfile) 
+          STOP 98
+       ELSE IF ( istatus /= NF90_NOERR ) THEN   ! dimension not found
           IF ( PRESENT(kstatus) ) kstatus=1    ! error send optionally to the calling program
+          PRINT *, 'dimension set to 0'
           getdim=0
-          IF ( PRESENT(cdtrue) ) cdtrue='unknown'
        ENDIF
+
+       ! output dimension name
+       IF ( PRESENT(cdtrue) ) cdtrue=clnam
+
        ! first call 
        IF ( ll_first ) THEN
           ll_first = .false. 
@@ -952,8 +977,6 @@ CONTAINS
        IF ( PRESENT(cdtrue) ) cdtrue='unknown'
        IF ( PRESENT(kstatus) ) kstatus=1 
     ENDIF
-    ! reset lexact to false for next call 
-    lexact=.false.
 
   END FUNCTION getdim
 
@@ -973,11 +996,13 @@ CONTAINS
     INTEGER(KIND=4) :: istatus
     INTEGER(KIND=4) :: jtry
     !!----------------------------------------------------------------------
+    CHARACTER(LEN=256)                          :: clvar
+    clvar = findvarname(cdfile,cdvar)
 
     IF ( PRESENT (cdmissing) ) cdmissing = cn_missing_value
 
     istatus=NF90_OPEN      (cdfile, NF90_NOWRITE, incid               )
-    istatus=NF90_INQ_VARID (incid, cdvar, id_var                      )
+    istatus=NF90_INQ_VARID (incid, clvar, id_var                      )
     istatus=NF90_GET_ATT   (incid, id_var, cn_missing_value, getspval )
 
     IF ( istatus /= NF90_NOERR ) THEN 
@@ -1116,8 +1141,9 @@ CONTAINS
     INTEGER(KIND=4),            INTENT(in) ::  knvars  ! Number of variables in cdfile
     INTEGER(KIND=4), DIMENSION(knvars)     :: getipk   ! array (variables ) of levels
 
-    INTEGER(KIND=4)    :: incid, ipk, jv, iipk
+    INTEGER(KIND=4)    :: incid, ipk, jv, iipk, nlpk
     INTEGER(KIND=4)    :: istatus
+    INTEGER(KIND=4), DIMENSION(:), ALLOCATABLE :: dimid
     CHARACTER(LEN=256) :: cldep
     !!----------------------------------------------------------------------
     istatus=NF90_OPEN(cdfile,NF90_NOWRITE,incid)
@@ -1133,7 +1159,11 @@ CONTAINS
     DO jv = 1, knvars
        istatus=NF90_INQUIRE_VARIABLE(incid, jv, ndims=ipk)
        IF (ipk == 4 ) THEN
-          getipk(jv) = iipk
+          ALLOCATE(dimid(ipk))
+          istatus=NF90_INQUIRE_VARIABLE(incid, jv, dimids=dimid)
+          istatus=NF90_INQUIRE_DIMENSION(incid, dimid(3), len=nlpk)
+          getipk(jv) = nlpk
+          DEALLOCATE(dimid)
        ELSE IF (ipk == 3 ) THEN
           getipk(jv) = 1
        ELSE
@@ -1240,12 +1270,14 @@ CONTAINS
 
   END FUNCTION getvarname
 
-  SUBROUTINE finddimname(cdfile,cddim)
-    CHARACTER(LEN=*), INTENT(inout) :: cddim        ! variable name to work with
-    CHARACTER(LEN=*), INTENT(in   ) :: cdfile       ! variable name to work with
+  FUNCTION finddimname(cdfile,cddim)
+    CHARACTER(LEN=*), INTENT(in) :: cddim        ! variable name to work with
+    CHARACTER(LEN=*), INTENT(in) :: cdfile       ! variable name to work with
     CHARACTER(LEN=256) :: cdimname
+    CHARACTER(LEN=256) :: finddimname
     INTEGER :: istatus, idx_dim, jd, kndims, incid, id_dim
 
+    finddimname='unknown'
     idx_dim = 1
     istatus = NF90_OPEN(cdfile,NF90_NOWRITE,incid)
     IF (istatus /= 0) THEN
@@ -1260,26 +1292,33 @@ CONTAINS
           istatus=NF90_INQUIRE_DIMENSION(incid, jd, name=cdimname )
           idx_dim=INDEX('|'//TRIM(cddim)//'|','|'//TRIM(cdimname)//'|')
           IF (idx_dim /= 0) THEN
-             cddim=TRIM(cdimname)
+             finddimname = TRIM(cdimname)
              EXIT
           ENDIF
        END DO
     ENDIF
     IF (idx_dim==0) THEN
-       PRINT *, 'Dimension not found, there is no match between netcdf variable name and the user list.'
-       PRINT *, 'User list is ',TRIM(cddim)
-       PRINT *, 'check argument input or variable list in modcdfname (need to be recompile)'
-       STOP 98
+       PRINT *, 'Dimensions ',TRIM(cddim)
+       PRINT *, 'not found in file ',TRIM(cdfile)
+       PRINT *, 'dimension name set to unknown'
+    ELSE
+       PRINT *, 'Dimension name used is ',TRIM(finddimname)
     ENDIF
-    PRINT *, 'Dimension name used is ',TRIM(cddim)
-  END SUBROUTINE
+    istatus=NF90_CLOSE(incid)
+  END FUNCTION
 
-  SUBROUTINE findvarname(cdfile,cdvar)
-    CHARACTER(LEN=*), INTENT(inout) :: cdvar        ! variable name to work with
-    CHARACTER(LEN=*), INTENT(in   ) :: cdfile       ! variable name to work with
+  FUNCTION findvarname(cdfile,cdvar,ld_verbose)
+    CHARACTER(LEN=*), INTENT(in) :: cdvar        ! variable name to work with
+    CHARACTER(LEN=*), INTENT(in) :: cdfile       ! variable name to work with
+    LOGICAL, OPTIONAL, INTENT(in):: ld_verbose
+    LOGICAL :: ll_verbose=.TRUE.
     CHARACTER(LEN=256) :: cvarname
+    CHARACTER(LEN=256) :: findvarname
     INTEGER :: istatus, idx_var, jv, knvars, incid, id_var
 
+    IF ( PRESENT(ld_verbose) ) ll_verbose = ld_verbose
+
+    findvarname='unknown'
     idx_var = 1
     istatus = NF90_OPEN(cdfile,NF90_NOWRITE,incid)
     IF (istatus /= 0) THEN
@@ -1294,19 +1333,22 @@ CONTAINS
           istatus=NF90_INQUIRE_VARIABLE(incid, jv, name=cvarname )
           idx_var=INDEX('|'//TRIM(cdvar)//'|','|'//TRIM(cvarname)//'|')
           IF (idx_var /= 0) THEN
-             cdvar=TRIM(cvarname)
+             findvarname=TRIM(cvarname)
+             PRINT *, 'Variable used is ',TRIM(findvarname)
              EXIT
           ENDIF
        END DO
+    ELSE
+       findvarname=TRIM(cdvar)
     ENDIF
-    IF (idx_var==0) THEN
-       PRINT *, 'Variable not found, there is no match between netcdf variable name and the user list.'
-       PRINT *, 'User list is ',TRIM(cdvar)
-       PRINT *, 'check argument input or variable list in modcdfname (need to be recompile)'
-       STOP 98
+
+    IF (idx_var==0 .AND. ll_verbose) THEN
+       PRINT *, 'Variable ',TRIM(cdvar)
+       PRINT *, 'not found in file ',TRIM(cdfile)
+       PRINT *, 'variable name set to unknown'
     ENDIF
-    PRINT *, 'Variable used is ',TRIM(cdvar)
-  END SUBROUTINE
+    istatus=NF90_CLOSE(incid)
+  END FUNCTION
 
   FUNCTION  getvar (cdfile,cdvar,klev,kpi,kpj,kimin,kjmin, ktime, ldiom)
     !!---------------------------------------------------------------------
@@ -1339,14 +1381,14 @@ CONTAINS
     REAL(KIND=4)                                :: sf=1., ao=0.        !: Scale factor and add_offset
     REAL(KIND=4)                                :: spval  !: missing value
     REAL(KIND=4) , DIMENSION (:,:), ALLOCATABLE :: zend, zstart
-    CHARACTER(LEN=256)                          :: clvar
     LOGICAL                                     :: lliom=.false., llperio=.false.
-    LOGICAL                                     :: llog=.FALSE. , lsf=.FALSE. , lao=.FALSE.
+    LOGICAL                                     :: llog=.FALSE. , lsf=.FALSE. , lao=.FALSE., ll_verbose=.TRUE.
     !!
-    INTEGER(KIND=4)                :: ityp
+    INTEGER(KIND=4)                :: ityp, ierr
     !INTEGER(KIND=4), DIMENSION(:)  :: dimids
     !INTEGER(KIND=4)                :: nAtts
     !!---------------------------------------------------------------------
+    CHARACTER(LEN=256)                          :: clvar
 
     ! check if variable in the file
     IF (chkfile(cdfile)) THEN
@@ -1396,39 +1438,42 @@ CONTAINS
     ENDIF
 
     ! Must reset the flags to false for every call to getvar
-    clvar=cdvar
+    clvar=clvar
     llog = .FALSE.
     lsf  = .FALSE.
     lao  = .FALSE.
 
     CALL ERR_HDL(NF90_OPEN(cdfile,NF90_NOWRITE,incid) )
 
-    IF ( lliom) THEN  !
-      IF ( clvar == cn_ve3t ) THEN
+    IF ( lliom ) THEN  !
+      ierr = SetMeshZgrVersion ( ll_verbose )
+      IF ( cdvar == cn_ve3t ) THEN
         SELECT CASE ( cg_zgr_ver )
         CASE ( 'v2.0' ) ; clvar = 'e3t_ps'
         CASE ( 'v3.0' ) ; clvar = 'e3t'
         CASE ( 'v3.6' ) ; clvar = 'e3t_0'
         END SELECT
-      ELSE IF ( clvar == cn_ve3u ) THEN
+      ELSE IF ( cdvar == cn_ve3u ) THEN
         SELECT CASE ( cg_zgr_ver )
         CASE ( 'v2.0' ) ; clvar = 'e3u_ps'
         CASE ( 'v3.0' ) ; clvar = 'e3u'
         CASE ( 'v3.6' ) ; clvar = 'e3u_0'
         END SELECT
-      ELSE IF ( clvar == cn_ve3v ) THEN
+      ELSE IF ( cdvar == cn_ve3v ) THEN
         SELECT CASE ( cg_zgr_ver )
         CASE ( 'v2.0' ) ; clvar = 'e3v_ps'
         CASE ( 'v3.0' ) ; clvar = 'e3v'
         CASE ( 'v3.6' ) ; clvar = 'e3v_0'
         END SELECT
-      ELSE IF ( clvar == cn_ve3w ) THEN
+      ELSE IF ( cdvar == cn_ve3w ) THEN
         SELECT CASE ( cg_zgr_ver )
         CASE ( 'v2.0' ) ; clvar = 'e3w_ps'
         CASE ( 'v3.0' ) ; clvar = 'e3w'
         CASE ( 'v3.6' ) ; clvar = 'e3w_0'
         END SELECT
       ENDIF
+    ELSE
+      clvar = findvarname(cdfile,cdvar)
     ENDIF
 
     istatus=NF90_INQUIRE(incid, unlimitedDimId=id_dimunlim)
@@ -1454,7 +1499,7 @@ CONTAINS
     icount(3)=1
     icount(4)=1
 
-    spval = getspval ( cdfile, cdvar)  ! try many kind of missing_value (eg _FillValue _Fillvalue Fillvalue ...)
+    spval = getspval ( cdfile, clvar)  ! try many kind of missing_value (eg _FillValue _Fillvalue Fillvalue ...)
 
     istatus=NF90_INQUIRE_ATTRIBUTE(incid,id_var,'savelog10')
     IF (istatus == NF90_NOERR ) THEN
@@ -1534,6 +1579,8 @@ CONTAINS
     REAL(KIND=4)                  :: spval              !  Missing values
     LOGICAL                       :: llog=.FALSE. , lsf=.FALSE. , lao=.FALSE.
     !!---------------------------------------------------------------------
+    CHARACTER(LEN=256)                          :: clvar
+    clvar = findvarname(cdfile,cdvar)
     IF (PRESENT(kimin) ) THEN
        iimin=kimin
     ELSE
@@ -1564,15 +1611,15 @@ CONTAINS
     lao=.FALSE.
     PRINT *,' GETVAR3D '
     PRINT *,'  ', TRIM(cdfile)
-    PRINT *,'  ', TRIM(cdvar )
+    PRINT *,'  ', TRIM(clvar )
     PRINT *,'    KPI KPJ KPZ ',kpi, kpj, kpz
 
     CALL ERR_HDL(NF90_OPEN(cdfile,NF90_NOWRITE,incid) )
-    CALL ERR_HDL(NF90_INQ_VARID ( incid, cdvar, id_var) )
+    CALL ERR_HDL(NF90_INQ_VARID ( incid, clvar, id_var) )
     istart=(/iimin, ijmin, ikmin, itime/)
     icount=(/kpi,   kpj,   kpz,   1    /)
 
-    spval = getspval ( cdfile, cdvar )
+    spval = getspval ( cdfile, clvar )
 
     istatus=NF90_INQUIRE_ATTRIBUTE(incid,id_var,'savelog10')
     IF (istatus == NF90_NOERR ) THEN
@@ -1597,7 +1644,7 @@ CONTAINS
 
     istatus=NF90_GET_VAR(incid,id_var,getvar3d, start=istart,count=icount)
     IF ( istatus /= 0 ) THEN
-       PRINT *,' Problem in getvar3d for ', TRIM(cdvar)
+       PRINT *,' Problem in getvar3d for ', TRIM(clvar)
        CALL ERR_HDL(istatus)
        STOP 98
     ENDIF
@@ -1640,6 +1687,9 @@ CONTAINS
     REAL(KIND=4)                  :: spval              !  Missing values
     LOGICAL                       :: llog=.FALSE. , lsf=.FALSE. , lao=.FALSE.
     !!---------------------------------------------------------------------
+    CHARACTER(LEN=256)                          :: clvar
+    clvar = findvarname(cdfile,cdvar)
+
     IF (PRESENT(kimin) ) THEN
        iimin=kimin
     ELSE
@@ -1664,11 +1714,11 @@ CONTAINS
     lao=.FALSE.
     PRINT *,' GETVAR3DT '
     PRINT *,'  ', TRIM(cdfile)
-    PRINT *,'  ', TRIM(cdvar )
+    PRINT *,'  ', TRIM(clvar )
     PRINT *,'    KPI KPJ KPT, KK ',kpi, kpj, kpt, kk
 
     CALL ERR_HDL(NF90_OPEN(cdfile,NF90_NOWRITE,incid) )
-    CALL ERR_HDL(NF90_INQ_VARID ( incid, cdvar, id_var) )
+    CALL ERR_HDL(NF90_INQ_VARID ( incid, clvar, id_var) )
     istatus= NF90_INQUIRE_VARIABLE(incid, id_var, ndims=iid)
     IF ( iid == 4 ) THEN
       istart=(/iimin, ijmin, kk, itmin/)
@@ -1678,7 +1728,7 @@ CONTAINS
       icount=(/kpi,   kpj,   kpt  , 1/)
     ENDIF
 
-    spval = getspval ( cdfile, cdvar )
+    spval = getspval ( cdfile, clvar )
 
     istatus=NF90_INQUIRE_ATTRIBUTE(incid,id_var,'savelog10')
     IF (istatus == NF90_NOERR ) THEN
@@ -1703,7 +1753,7 @@ CONTAINS
 
     istatus=NF90_GET_VAR(incid,id_var, getvar3dt(:,:,:), start=istart,count=icount)
     IF ( istatus /= 0 ) THEN
-       PRINT *,' Problem in getvar3dt for ', TRIM(cdvar)
+       PRINT *,' Problem in getvar3dt for ', TRIM(clvar)
        CALL ERR_HDL(istatus)
        STOP 98
     ENDIF
@@ -1745,6 +1795,9 @@ CONTAINS
     REAL(KIND=4)                  :: spval              !  Missing values
     LOGICAL                       :: llog=.FALSE. , lsf=.FALSE. , lao=.FALSE.
     !!---------------------------------------------------------------------
+    CHARACTER(LEN=256)                          :: clvar
+    clvar = findvarname(cdfile,cdvar)
+
     IF (PRESENT(kimin) ) THEN
        iimin=kimin
     ELSE
@@ -1775,11 +1828,11 @@ CONTAINS
     lao=.FALSE.
     PRINT *,' GETVAR4D '
     PRINT *,'  ', TRIM(cdfile)
-    PRINT *,'  ', TRIM(cdvar )
+    PRINT *,'  ', TRIM(clvar )
     PRINT *,'    KPI KPJ KPZ, KPT ',kpi, kpj, kpz, kpt
 
     CALL ERR_HDL(NF90_OPEN(cdfile,NF90_NOWRITE,incid) )
-    CALL ERR_HDL(NF90_INQ_VARID ( incid, cdvar, id_var) )
+    CALL ERR_HDL(NF90_INQ_VARID ( incid, clvar, id_var) )
     istatus= NF90_INQUIRE_VARIABLE(incid, id_var, ndims=iid)
     IF ( iid == 4 ) THEN
       istart=(/iimin, ijmin, ikmin, itmin/)
@@ -1789,7 +1842,7 @@ CONTAINS
       icount=(/kpi,   kpj,   kpt,   1/)
     ENDIF
 
-    spval = getspval ( cdfile, cdvar )
+    spval = getspval ( cdfile, clvar )
 
     istatus=NF90_INQUIRE_ATTRIBUTE(incid,id_var,'savelog10')
     IF (istatus == NF90_NOERR ) THEN
@@ -1814,7 +1867,7 @@ CONTAINS
 
     istatus=NF90_GET_VAR(incid,id_var,getvar4d, start=istart,count=icount)
     IF ( istatus /= 0 ) THEN
-       PRINT *,' Problem in getvar4d for ', TRIM(cdvar)
+       PRINT *,' Problem in getvar4d for ', TRIM(clvar)
        CALL ERR_HDL(istatus)
        STOP 98
     ENDIF
@@ -1855,6 +1908,8 @@ CONTAINS
     REAL(KIND=4)                  :: spval              !  Missing values
     LOGICAL                       :: llog=.FALSE. , lsf=.FALSE. , lao=.FALSE.
     !!-------------------------------------------------------------------------
+    CHARACTER(LEN=256)            :: clvar, cdimy
+    clvar = findvarname(cdfile,cdvar)
 
     IF (PRESENT(kimin) ) THEN
        imin=kimin
@@ -1881,9 +1936,9 @@ CONTAINS
 
 
     CALL ERR_HDL(NF90_OPEN(cdfile,NF90_NOWRITE,incid) )
-    CALL ERR_HDL(NF90_INQ_VARID ( incid,cdvar,id_var))
+    CALL ERR_HDL(NF90_INQ_VARID ( incid,clvar,id_var))
 
-    spval = getspval ( cdfile, cdvar )
+    spval = getspval ( cdfile, clvar )
 
     istatus=NF90_INQUIRE_ATTRIBUTE(incid,id_var,'savelog10')
     IF (istatus == NF90_NOERR ) THEN
@@ -1907,19 +1962,18 @@ CONTAINS
     ENDIF
 
     ! detect if there is a y dimension in cdfile
-    istatus=NF90_INQ_DIMID(incid,'y',idum)
-    IF ( istatus == NF90_NOERR ) THEN  ! the file has a 'y' dimension
+    IF ( finddimname(cdfile,cn_y) == 'unknown' ) THEN  ! no y dimension
+      istart=(/imin,kmin,itime,1/)
+      icount=(/kpi,kpz,1,1/)
+    ELSE    ! y dimension
       istart=(/imin,kj,kmin,itime/)
       ! JMM ! it workd for X Y Z T file,   not for X Y T .... try to found a fix !
       icount=(/kpi,1,kpz,1/)
-    ELSE    ! no y dimension
-      istart=(/imin,kmin,itime,1/)
-      icount=(/kpi,kpz,1,1/)
     ENDIF
 
     istatus=NF90_GET_VAR(incid,id_var,getvarxz, start=istart,count=icount)
     IF ( istatus /= 0 ) THEN
-       PRINT *,' Problem in getvarxz for ', TRIM(cdvar)
+       PRINT *,' Problem in getvarxz for ', TRIM(clvar)
        CALL ERR_HDL(istatus)
        STOP 98
     ENDIF
@@ -1961,6 +2015,8 @@ CONTAINS
     REAL(KIND=4)                        :: spval          !  Missing values
     LOGICAL                             :: llog=.FALSE. , lsf=.FALSE. , lao=.FALSE.
     !!-------------------------------------------------------------------------
+    CHARACTER(LEN=256)                          :: clvar
+    clvar = findvarname(cdfile,cdvar)
 
     IF (PRESENT(kjmin) ) THEN
        jmin=kjmin
@@ -1987,9 +2043,9 @@ CONTAINS
 
 
     CALL ERR_HDL(NF90_OPEN(cdfile,NF90_NOWRITE,incid) )
-    CALL ERR_HDL(NF90_INQ_VARID ( incid,cdvar,id_var))
+    CALL ERR_HDL(NF90_INQ_VARID ( incid,clvar,id_var))
 
-    spval = getspval ( cdfile, cdvar )
+    spval = getspval ( cdfile, clvar )
 
     istatus=NF90_INQUIRE_ATTRIBUTE(incid,id_var,'savelog10')
     IF (istatus == NF90_NOERR ) THEN
@@ -2025,7 +2081,7 @@ CONTAINS
 
     istatus=NF90_GET_VAR(incid,id_var,getvaryz, start=istart,count=icount)
     IF ( istatus /= 0 ) THEN
-       PRINT *,' Problem in getvaryz for ', TRIM(cdvar)
+       PRINT *,' Problem in getvaryz for ', TRIM(clvar)
        CALL ERR_HDL(istatus)
        STOP 98
     ENDIF
@@ -2058,12 +2114,15 @@ CONTAINS
     INTEGER(KIND=4) :: incid, id_var
     INTEGER(KIND=4) :: istatus
     !!-------------------------------------------------------------------------
+    CHARACTER(LEN=256)                          :: clvar
+    clvar = findvarname(cdfile,cdvar)
+
     istart(:) = 1
     icount(1)=kk
     IF ( PRESENT(kstatus) ) kstatus = NF90_NOERR
 
     istatus=NF90_OPEN(cdfile,NF90_NOWRITE,incid)
-    istatus=NF90_INQ_VARID ( incid,cdvar,id_var)
+    istatus=NF90_INQ_VARID ( incid,clvar,id_var)
     IF ( istatus == NF90_NOERR ) THEN
        istatus=NF90_GET_VAR(incid,id_var,getvar1d,start=istart,count=icount)
     ELSE
@@ -2092,12 +2151,14 @@ CONTAINS
     INTEGER(KIND=4), DIMENSION(4) :: istart, icount
     INTEGER(KIND=4)               :: incid, id_var
     INTEGER(KIND=4)               :: istatus
-    CHARACTER(LEN=256)            :: clvar   ! local name for cdf var (modified)
+    CHARACTER(LEN=256)            :: clvar, clvdep   ! local name for cdf var (modified)
+    LOGICAL :: ll_verbose=.TRUE.
     !!-------------------------------------------------------------------------
+    clvar = findvarname(cdfile,cdvar)
+
     istart(:) = 1
     icount(:) = 1
     icount(3) = kk
-    clvar=cdvar
 
     istatus=NF90_OPEN(cdfile,NF90_NOWRITE,incid)
     ! check for IOM style mesh_zgr or coordinates :
@@ -2108,70 +2169,23 @@ CONTAINS
     !   e3w(time,z,y_a,x_a)            e3w_0(t,z)      e3w_1d(t,z)
 
     ! change icount for 1D variables in mesh_zgr only
-    IF (    clvar == cn_gdept  .OR. &
-          & clvar == cn_gdepw  .OR. &
-          & clvar == cn_ve3t1d .OR. &
-          & clvar == cn_ve3w1d      ) THEN
+    IF ( cdfile == cn_fzgr  ) THEN
+       istatus=SetMeshZgrVersion ( ll_verbose ) 
        SELECT CASE ( cg_zgr_ver ) 
        CASE ( 'v2.0') ; icount(1)=1  ; icount(3)=kk
        CASE ( 'v3.0') ; icount(1)=kk ; icount(3)=1
        CASE ( 'v3.6') ; icount(1)=kk ; icount(3)=1
        END SELECT
     ENDIF
-   
-    IF ( clvar == cn_gdept) THEN
-    SELECT CASE ( cg_zgr_ver )
-    CASE ( 'v2.0')
-      clvar = 'gdept'
-    CASE ( 'v3.0')
-      clvar = 'gdept_0'
-    CASE ( 'v3.6')
-      clvar = 'gdept_1d'
-    END SELECT
-    ENDIF
-
-    IF ( clvar == cn_gdepw) THEN
-    SELECT CASE ( cg_zgr_ver )
-    CASE ( 'v2.0')
-      clvar = 'gdepw'
-    CASE ( 'v3.0')
-      clvar = 'gdepw_0'
-    CASE ( 'v3.6')
-      clvar = 'gdepw_1d'
-    END SELECT
-    ENDIF
-
-    IF ( clvar == cn_ve3t1d) THEN
-    SELECT CASE ( cg_zgr_ver )
-    CASE ( 'v2.0')
-      clvar = 'e3t'
-    CASE ( 'v3.0')
-      clvar = 'e3t_0'
-    CASE ( 'v3.6')
-      clvar = 'e3t_1d'
-    END SELECT
-    ENDIF
-
-    IF ( clvar == cn_ve3w1d) THEN
-    SELECT CASE ( cg_zgr_ver )
-    CASE ( 'v2.0')
-      clvar = 'e3w'
-    CASE ( 'v3.0')
-      clvar = 'e3w_0'
-    CASE ( 'v3.6')
-      clvar = 'e3w_1d'
-    END SELECT
-    ENDIF
     
     istatus=NF90_INQ_VARID ( incid,clvar,id_var)
     istatus=NF90_GET_VAR(incid,id_var,getvare3,start=istart,count=icount)
     IF ( istatus /= 0 ) THEN
-       PRINT *,' Problem in getvare3 for ', TRIM(cdvar)
+       PRINT *,' Problem in getvare3 for ', TRIM(clvar)
        PRINT *,TRIM(cdfile), kk
        CALL ERR_HDL(istatus)
        STOP 98
     ENDIF
-
     istatus=NF90_CLOSE(incid)
 
   END FUNCTION getvare3
@@ -2208,8 +2222,7 @@ CONTAINS
     INTEGER(KIND=4)                           :: istatus, idep, jj
     REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: z2d
     REAL(KIND=4), DIMENSION(kpk)              :: z1d
-    CHARACTER(LEN=256), DIMENSION(jpdep )     :: cldept= (/'deptht ','depthu ','depthv ','depthw ','nav_lev','z      '/)
-    CHARACTER(LEN=256)                        :: cldep
+    CHARACTER(LEN=256)                        :: clvdep, clvlon2d, clvlon1d, clvlat2d, clvlat1d
     LOGICAL                                   :: ll_xycoo
     !!----------------------------------------------------------------------
     IF (PRESENT(ld_xycoo) ) THEN 
@@ -2218,26 +2231,26 @@ CONTAINS
       ll_xycoo = .true.
     ENDIF
 
-    cldept = (/cn_vdeptht, cn_vdepthu, cn_vdepthv, cn_vdepthw,'nav_lev','z      '/)
-
     IF ( ll_xycoo  ) THEN   
        ALLOCATE ( z2d (kpi,kpj) )
    
        IF (PRESENT(pnavlon) ) THEN 
           z2d = pnavlon
        ELSE
-          IF ( chkvar ( cdfile, cn_vlon2d )) THEN
-              IF (chkvar (cdfile, cn_vlon1d) ) THEN
+          clvlon2d=findvarname(cdfile, cn_vlon2d)
+          IF ( TRIM(clvlon2d) == 'unknown') THEN
+              clvlon1d=findvarname(cdfile, cn_vlon2d)
+              IF ( TRIM(clvlon1d) == 'unknown' ) THEN
                 PRINT *, '... dummy value used!'
                 z2d = 0.
               ELSE
-                z2d(:,1) = getvar1d(cdfile, cn_vlon1d, kpi, istatus ) 
+                z2d(:,1) = getvar1d(cdfile, clvlon1d, kpi ) 
                 DO jj=2,kpj
                   z2d(:,jj) = z2d(:,1)
                 ENDDO
               ENDIF
           ELSE
-            z2d=getvar(cdfile,cn_vlon2d, 1,kpi,kpj)
+            z2d=getvar(cdfile,clvlon2d, 1,kpi,kpj)
           ENDIF
        ENDIF
        istatus = putvar(kout, nid_lon,z2d,1,kpi,kpj)
@@ -2245,18 +2258,20 @@ CONTAINS
        IF (PRESENT(pnavlat) ) THEN
           z2d = pnavlat
        ELSE
-          IF ( chkvar ( cdfile, cn_vlat2d )) THEN
-              IF (chkvar (cdfile, cn_vlat1d) ) THEN
+          clvlat2d=findvarname(cdfile, cn_vlat2d)
+          IF ( TRIM(clvlon2d) == 'unknown') THEN
+              clvlat1d=findvarname(cdfile, cn_vlat2d)
+              IF ( TRIM(clvlat1d) == 'unknown' ) THEN
                 PRINT *, '... dummy value used!'
                 z2d = 0.
               ELSE
-                z2d(1,:) = getvar1d(cdfile, cn_vlat1d, kpj, istatus ) 
+                z2d(1,:) = getvar1d(cdfile, clvlat1d, kpj ) 
                 DO jj=2,kpi
                   z2d(jj,:) = z2d(1,:)
                 ENDDO
               ENDIF
           ELSE
-            z2d=getvar(cdfile,cn_vlat2d, 1,kpi,kpj)
+            z2d=getvar(cdfile,clvlat2d, 1,kpi,kpj)
           ENDIF
        ENDIF
    
@@ -2268,21 +2283,17 @@ CONTAINS
        IF (PRESENT(pdep) ) THEN
           z1d = pdep
        ELSE
-          idep = NF90_NOERR
-
           IF ( PRESENT (cdep)) THEN
              z1d=getvar1d(cdfile,cdep,kpk,idep)
           ENDIF
 
           IF ( .NOT. PRESENT(cdep) .OR. idep /= NF90_NOERR ) THEN  ! look for standard dep name
-             DO jj = 1,jpdep
-                cldep=cldept(jj)
-                z1d=getvar1d(cdfile,cldep,kpk,idep)
-                IF ( idep == NF90_NOERR )  EXIT
-             END DO
-             IF (jj == jpdep +1 ) THEN
-                PRINT *,' No depth variable ( ',TRIM(cldep),' ) found in ', TRIM(cdfile)
+             clvdep = findvarname(cdfile,cn_z)
+             IF ( TRIM(clvdep) == 'unknown' ) THEN
+                PRINT *,' putheadervar: No depth variable ( ',TRIM(cn_z),' ) found in ', TRIM(cdfile)
                 STOP 98
+             ELSE
+                z1d=getvar1d(cdfile,clvdep,kpk)
              ENDIF
           ENDIF
        ENDIF
@@ -2946,7 +2957,6 @@ CONTAINS
        INQUIRE (file = TRIM(cd_file), EXIST=ll_exist)
        IF (ll_exist) THEN
           chkfile = .false.
-          IF ( cd_file == cn_fzgr ) ierr = SetMeshZgrVersion ( ll_verbose )
        ELSE
           PRINT *, ' File ',TRIM(cd_file),' is missing '
           chkfile = .true.
@@ -2973,33 +2983,21 @@ CONTAINS
     CHARACTER(LEN=*),  INTENT(in) :: cd_var
     LOGICAL, OPTIONAL, INTENT(in) :: ld_verbose
 
+    LOGICAL :: ll_verbose=.TRUE.
     INTEGER(KIND=4)              :: istatus
     INTEGER(KIND=4)              :: incid, id_t, id_var
-    LOGICAL                      :: ll_verbose
     !!----------------------------------------------------------------------
-    IF ( TRIM(cd_var) /= 'none')  THEN
-       IF ( PRESENT(ld_verbose) ) THEN
-          ll_verbose = ld_verbose
-       ELSE
-          ll_verbose = .FALSE.
-       ENDIF
-    
-       ! Open cdf dataset
-       istatus = NF90_OPEN(cd_file, NF90_NOWRITE,incid)
-       ! Read variable
-       istatus = NF90_INQ_VARID(incid, cd_var, id_var)
+    CHARACTER(LEN=256)            :: clvar   ! local name for cdf var (modified)
 
-       IF ( istatus == NF90_NOERR ) THEN
-          chkvar = .false.
+    IF ( TRIM(cd_var) /= 'none')  THEN
+       IF (PRESENT(ld_verbose)) ll_verbose=ld_verbose
+       IF ( TRIM(findvarname(cd_file,cd_var,ll_verbose)) == 'unknown' ) THEN
+          chkvar=.TRUE.
        ELSE
-          IF (cd_file /= 'none') PRINT *, ' Var ',TRIM(cd_var),' is missing in file ',TRIM(cd_file)
-          chkvar = .true.
-       ENDIF
-       
-       ! Close file
-       istatus = NF90_CLOSE(incid) 
+          chkvar=.FALSE.
+       END IF
     ELSE
-       chkvar = .false.  ! 'none' file is not checked
+       chkvar = .FALSE.  ! 'none' file is not checked
     ENDIF
 
   END FUNCTION chkvar

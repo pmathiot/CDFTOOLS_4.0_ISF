@@ -260,7 +260,7 @@ CONTAINS
        stypvar(4)%cshort_name = 'hflx_ind'             ; stypvar(5)%cshort_name = 'hflx_pac'
     ENDIF
     ! create output fileset
-    ncout = create      (cf_outnc, 'none',  ikx,      npjglo, npk                                  )
+    ncout = create      (cf_outnc, cf_tfil,  ikx,     npjglo, npk                                  )
     ierr  = createvar   (ncout,    stypvar, npbasins, ipk,    id_varout                            )
     ierr  = putheadervar(ncout,    cf_tfil, ikx,      npjglo, npk, pnavlon=rdumlon, pnavlat=rdumlat)
 

@@ -55,7 +55,6 @@ PROGRAM cdfstd
   CHARACTER(LEN=256)                            :: cf_in               ! input file
   CHARACTER(LEN=256)                            :: cf_out='cdfstd.nc'  ! std dev output file
   CHARACTER(LEN=256)                            :: cf_moy='cdfmoy.nc'  ! mean output file (optional)
-  CHARACTER(LEN=256)                            :: cv_dep              ! depth variable name
   CHARACTER(LEN=256)                            :: cldum               ! dummy string
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_namesi           ! array of var name
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_nameso           ! array of var name for output
@@ -142,23 +141,10 @@ PROGRAM cdfstd
 
   IF ( chkfile(cf_in) ) STOP 99 ! missing file
 
+
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
-
-  ! looking for npk among various possible name
-  idep_max=8
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-     PRINT *,' assume file with no depth'
-     npk=0
-  ENDIF
+  npk    = getdim (cf_in, cn_z)
 
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo
@@ -212,7 +198,6 @@ PROGRAM cdfstd
               DO jt=1,npt
                  ntframe = ntframe + 1
                  v2d(:,:) = getvar(cf_in, cv_namesi(jvar), jk, npiglo, npjglo, ktime=jt)
-                 IF ( lspval0  )  WHERE (v2d == zspval_in(jvar))  v2d = 0.     ! [from SL] change missing values to 0
                  WHERE (v2d == 0.) rmask2d = 0.                                ! [from SL] keep memory of missing values at gridpoints
 
 
@@ -287,13 +272,11 @@ CONTAINS
     cv_namesi(:) = getvarname(cf_in, nvars, stypvari)
 
     IF ( lspval0 ) THEN                              ! [from SL]
-       ALLOCATE ( zspval_in(nvars) )                 ! [from SL]
-       zspval_in(:) = stypvari(:)%rmissing_value     ! [from SL]
        stypvari(:)%rmissing_value = 0.               ! [from SL]
     ENDIF                                            ! [from SL]
 
     id_var(:)  = (/(jv, jv=1,nvars)/)
-    ipk(:)     = getipk(cf_in, nvars, cdep=cv_dep)
+    ipk(:)     = getipk(cf_in, nvars)
     DO jvar = 1, nvars 
        cv_nameso(jvar) = TRIM(cv_namesi(jvar))//'_std' 
     ENDDO
@@ -310,9 +293,9 @@ CONTAINS
 
 
     ! create output fileset
-    ncout = create      (cf_out, cf_in,    npiglo, npjglo, npk, cdep=cv_dep , ld_nc4=lnc4)
-    ierr  = createvar   (ncout,  stypvaro, nvars,  ipk,    id_varout        , ld_nc4=lnc4)
-    ierr  = putheadervar(ncout,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep              )
+    ncout = create      (cf_out, cf_in,    npiglo, npjglo, npk,       ld_nc4=lnc4)
+    ierr  = createvar   (ncout,  stypvaro, nvars,  ipk,    id_varout, ld_nc4=lnc4)
+    ierr  = putheadervar(ncout,  cf_in,    npiglo, npjglo, npk )
 
     IF ( lsave )  THEN
        WHERE(ipk == 0 ) stypvari(:)%cname='none'
@@ -320,9 +303,9 @@ CONTAINS
           stypvari(jvar)%ichunk      = (/npiglo,MAX(1,npjglo/30),1,1 /)
        ENDDO
        ! create output fileset for mean values
-       ncou2 = create      (cf_moy, cf_in,    npiglo, npjglo, npk, cdep=cv_dep , ld_nc4=lnc4)
-       ierr  = createvar   (ncou2,  stypvari, nvars,  ipk,    id_varoutm       , ld_nc4=lnc4)
-       ierr  = putheadervar(ncou2,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep              )
+       ncou2 = create      (cf_moy, cf_in,    npiglo, npjglo, npk,        ld_nc4=lnc4)
+       ierr  = createvar   (ncou2,  stypvari, nvars,  ipk,    id_varoutm, ld_nc4=lnc4)
+       ierr  = putheadervar(ncou2,  cf_in,    npiglo, npjglo, npk )
     ENDIF
 
   END SUBROUTINE CreateOutput

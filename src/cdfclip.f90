@@ -139,22 +139,11 @@ PROGRAM cdfclip
   npjglo= ijmax-ijmin+1
 
   ! look for possible name for vertical dim                       :
-  npk   = getdim (cf_in,cn_z,cdtrue=cv_dep, kstatus=ierr)     ! depthxxx
-  PRINT *,'ist',ierr,TRIM(cn_z)
-  IF (ierr /= 0 ) THEN
-     npk   = getdim (cf_in,'z',cdtrue=cv_dep,kstatus=ierr)       ! zxxx
-     PRINT *,'ist',ierr,'z'
-     IF (ierr /= 0 ) THEN
-        npk   = getdim (cf_in,'sigma',cdtrue=cv_dep,kstatus=ierr) ! sigmaxxx
-        PRINT *,'ist',ierr,'sigma'
-        IF (ierr /= 0 ) THEN
-           PRINT *,' assume file with no depth'
-           IF ( ikmin > 0 ) THEN
-              PRINT *,' You cannot specify limits on k level !' ; STOP 99
-           ENDIF
-           npk=0  ! means no dim level in file (implicitly 1 level)
-        ENDIF
-     ENDIF
+  npk   = getdim (cf_in,cn_z)     ! depthxxx
+  IF ( ikmin > npk ) THEN
+     PRINT *,' ikmin too large compare to the number of level in the netcdf ';
+     PRINT *,' npk = ',npk
+     STOP 99
   ENDIF
 
   ! replace flag value (-9999) by standard value (no ikmin ikmax specified = whole column)
@@ -164,16 +153,11 @@ PROGRAM cdfclip
   IF (npk == 0 ) ikmax = 1
 
   ! look for possible name for time dimension
-  npt     = getdim(cf_in,cn_t, cdtrue=cv_tim, kstatus=ierr)
-  IF ( ierr /= 0 ) THEN
-     npt     = getdim(cf_in,'time', cdtrue=cv_tim, kstatus=ierr)
-     IF ( ierr /= 0 ) THEN
-        npt     = getdim(cf_in,'t', cdtrue=cv_tim, kstatus=ierr)
-        IF ( ierr /= 0 ) THEN
-           PRINT *, 'no time dimension found'
-           npt=1
-        ENDIF
-     ENDIF
+  npt = getdim(cf_in,cn_t)
+  cv_tim=cn_t
+  IF ( npt == 0 ) THEN
+     PRINT *, 'no time dimension found'
+     npt=1
   ENDIF
 
   PRINT *, 'npiglo = ', npiglo
@@ -202,7 +186,7 @@ PROGRAM cdfclip
   rlat =getvar(cf_in, cn_vlat2d, 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)  ! nav_lat
 
   IF ( npk /= 0 ) THEN
-     rdepg   = getvar1d(cf_in, cv_dep, npk)
+     rdepg   = getvar1d(cf_in, cn_z, npk)
      rdep(:) = rdepg(ikmin:ikmax)  
   ENDIF
 
@@ -278,7 +262,7 @@ CONTAINS
     id_var(:)  = (/(jv, jv=1,nvars)/)
 
     ! ipk gives the number of level or 0 if not a T[Z]YX  variable
-    ipk(:) = getipk (cf_in,nvars,cdep=cv_dep)
+    ipk(:) = getipk (cf_in,nvars)
     ipk(:) = MIN ( ipk , ikmax )            ! reduce max depth to the required maximum
     ipkk(:)= MAX( 0 , ipk(:) - ikmin + 1 )  ! for output variable. For 2D input var, 
     ! ipkk is set to 0 if ikmin > 1 ... OK ? 
@@ -291,9 +275,9 @@ CONTAINS
 
     ! create output fileset
     ! create output file taking the sizes in cf_in
-    ncout = create      (cf_out, cf_in,   npiglo, npjglo, npkk, cdep=cv_dep            , ld_nc4=lnc4)
-    ierr  = createvar   (ncout,  stypvar, nvars,  ipkk,   id_varout, cdglobal=cglobal,   ld_nc4=lnc4)
-    ierr  = putheadervar(ncout,  cf_in,   npiglo, npjglo, npkk, pnavlon=rlon, pnavlat=rlat, pdep=rdep, cdep=cv_dep)
+    ncout = create      (cf_out, cf_in,   npiglo, npjglo, npkk                       , ld_nc4=lnc4)
+    ierr  = createvar   (ncout,  stypvar, nvars,  ipkk,   id_varout, cdglobal=cglobal, ld_nc4=lnc4)
+    ierr  = putheadervar(ncout,  cf_in,   npiglo, npjglo, npkk, pnavlon=rlon, pnavlat=rlat, pdep=rdep)
 
     dtim = getvar1d(cf_in, cn_vtimec, npt     )
     ierr = putvar1d(ncout, dtim,      npt, 'T')

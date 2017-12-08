@@ -363,12 +363,11 @@ PROGRAM cdfsum
     stypvar(2)%cshort_name    = 'sum_3D'//TRIM(clshort_name)
     stypvar(2)%caxis          = 'T'
 
-    ncout = create      (cf_out,     'none',  1,     1  ,   nvpk, cdep=cdep , ld_nc4=lnc4 )
+    ncout = create      (cf_out,     cf_in,  1,     1  ,   nvpk, ld_nc4=lnc4 )
     ierr  = createvar   (ncout,      stypvar, 2    , ipk,   id_varout       , ld_nc4=lnc4 )
     ierr  = putheadervar(ncout,      cf_in,   1,     1, npkk,              &
                     &  pnavlon=zdumlon, pnavlat=zdumlat,                   &
-                    &  pdep=gdep(ikmin:ikmax),                             &
-                    &  cdep=cdep                                           )
+                    &  pdep=gdep(ikmin:ikmax))
     dtim  = getvar1d(cf_in, cn_vtimec, npt     )
     ierr  = putvar1d(ncout,  dtim,     npt, 'T')
   

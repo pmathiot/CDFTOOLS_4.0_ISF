@@ -255,7 +255,7 @@ CONTAINS
     CALL SetGlobalAtt (cglobal)
 
     ! create output fileset
-    ncout = create      (cf_out, 'none', nbin, npt, 0      )
+    ncout = create      (cf_out, cf_ifil, nbin, npt, 0      )
     ierr  = createvar   (ncout,  stypvar, 1, ipk, id_varout , cdglobal=cglobal        )
     ierr  = putheadervar(ncout,  cf_ifil, nbin, npt, 0 , pnavlon=zlon, pnavlat=ztimed )
 

@@ -160,7 +160,7 @@ PROGRAM cdfvertmean
 
   ! just chck if var exist in file 
   DO jvar = 1, nvaro
-     IF ( chkvar( cf_in, cv_in(jvar)) ) STOP 99  ! message is written in cdfio.chkvar
+     IF (chkvar(cf_in, cv_in(jvar))) STOP 99  ! message is written in cdfio.chkvar
   ENDDO
 
   ! Allocate arrays

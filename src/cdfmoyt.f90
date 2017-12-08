@@ -152,22 +152,8 @@ PROGRAM cdfmoyt
   cf_in  = cf_lst(1)
   npiglo = getdim (cf_in,cn_x)
   npjglo = getdim (cf_in,cn_y)
+  npk    = getdim (cf_in,cn_z)
   npt    = getdim (cf_in,cn_t)
-
-  ! looking for npk among various possible name
-  idep_max=8
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-     PRINT *,' assume file with no depth'
-     npk=0
-  ENDIF
 
   ! check that all files have the same number of time frames
   ierr = 0
@@ -340,19 +326,19 @@ CONTAINS
 
     id_var(:)  = (/(jv, jv=1,nvars)/)
     ! ipk gives the number of level or 0 if not a T[Z]YX  variable
-    ipk(:)     = getipk (cf_in,nvars,cdep=cv_dep)
+    ipk(:)     = getipk (cf_in,nvars)
     WHERE( ipk == 0 ) cv_nam='none'
     stypvar( :)%cname = cv_nam
     stypvar2(:)%cname = cv_nam2
 
     ! create output file taking the sizes in cf_in
-    ncout  = create      (cf_out,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep, ld_nc4=lnc4 )
+    ncout  = create      (cf_out,  cf_in,    npiglo, npjglo, npk, ld_nc4=lnc4 )
     ierr   = createvar   (ncout ,  stypvar,  nvars,  ipk,    id_varout       , ld_nc4=lnc4 )
-    ierr   = putheadervar(ncout,   cf_in,    npiglo, npjglo, npk, cdep=cv_dep)
+    ierr   = putheadervar(ncout,   cf_in,    npiglo, npjglo, npk)
 
-    ncout2 = create      (cf_out2, cf_in,    npiglo, npjglo, npk, cdep=cv_dep, ld_nc4=lnc4 )
+    ncout2 = create      (cf_out2, cf_in,    npiglo, npjglo, npk, ld_nc4=lnc4 )
     ierr   = createvar   (ncout2,  stypvar2, nvars,  ipk,    id_varout2      , ld_nc4=lnc4 )
-    ierr   = putheadervar(ncout2,  cf_in,    npiglo, npjglo, npk, cdep=cv_dep)
+    ierr   = putheadervar(ncout2,  cf_in,    npiglo, npjglo, npk)
 
   END SUBROUTINE CreateOutput
 

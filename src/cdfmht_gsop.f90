@@ -511,7 +511,7 @@ CONTAINS
     stypvar(4)%caxis='TY'
 
     ! create output fileset
-    ncout = create(cf_out, cf_vfil,1,npjglo,1,cdep=cn_vdepthw)
+    ncout = create(cf_out, cf_vfil,1,npjglo,1,cdimz='depthw')
     ierr  = createvar(ncout ,stypvar,jpgsop, ipk_gsop,id_varout_gsop )
     ierr  = putheadervar(ncout, cf_vfil,1, npjglo,1,pnavlon=rlon,pnavlat=rlat,pdep=gdepw)
     dtim  = getvar1d(cf_vfil,cn_vtimec,npt)

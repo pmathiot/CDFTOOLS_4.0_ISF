@@ -161,9 +161,9 @@ CONTAINS
 
 
     ! create output fileset
-    ncout = create      (cf_out, 'none',  npiglo,      npjglo, 1,  cdep='depthw', ld_nc4=lnc4 )
-    ierr  = createvar   (ncout,  stypvar, nboutput, ipk, id_varout              , ld_nc4=lnc4 )
-    ierr  = putheadervar(ncout,  cf_lst(1), npiglo,      npjglo, 1)
+    ncout = create      (cf_out, cf_lst(1), npiglo,      npjglo, 0, ld_nc4=lnc4 )
+    ierr  = createvar   (ncout,  stypvar, nboutput, ipk, id_varout, ld_nc4=lnc4 )
+    ierr  = putheadervar(ncout,  cf_lst(1), npiglo,      npjglo, 0)
 
     dtim = (/(jt,jt=1,12)/)
     ierr = putvar1d(ncout, dtim, npt, 'T')

@@ -198,27 +198,10 @@ PROGRAM cdfdegrad
 
   IF ( lg_vvl ) cf_e3 = cf_in  
 
-  cv_dep = 'none'
   npiglo = getdim (cf_in  , cn_x)
   npjglo = getdim (cf_in  , cn_y)
-
-  ! looking for npk among various possible name
-  idep_max=8
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in  , clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-     PRINT *,' assume file with no depth'
-     npk=0
-  ENDIF
-
-  npt    = getdim (cf_in  , cn_t   )
+  npt    = getdim (cf_in  , cn_t)
+  npk    = getdim (cf_in  , cn_z)
   nvpk   = getvdim(cf_in  , cv_nam )
 
   IF (npk   == 0 ) THEN ; npk = 1; ENDIF ! no depth dimension ==> 1 level
@@ -261,7 +244,6 @@ PROGRAM cdfdegrad
   PRINT *, 'npk    = ', npk
   PRINT *, 'npt    = ', npt
   PRINT *, 'nvpk   = ', nvpk
-  PRINT *, 'depth dim name is ',TRIM(cv_dep)
 
   ! Allocate arrays
   ALLOCATE (zmask(npiglo,npjglo) )
@@ -273,7 +255,7 @@ PROGRAM cdfdegrad
   IF ( ll_pt .OR. ll_pw .OR. ll_pu )  e2(:,:) = getvar  (cn_fhgr, cv_e2,  1,  npiglo, npjglo, kimin=iimin, kjmin=ijmin)
 
   IF ( lfull )  e31d(:) = getvare3(cn_fzgr, cv_e31d, npk)
-  zdep(:) = getvare3(cf_in, cv_dep, npk)
+  zdep(:) = getvare3(cf_in, cn_z, npk)
   gdep(:) = zdep(  1  :npk)
 
   ALLOCATE ( stypvar( 2 ), ipk( 2 ), id_varout( 2 ) )
@@ -493,9 +475,9 @@ CONTAINS
 
     ! create output fileset
     IF ( cf_out == '' ) cf_out= 'degraded_'//TRIM(cv_nam)//'.nc'  ! set default name if not specified on command line
-    ncout = create      (cf_out ,     'none',  ikx,   iky,   npk, cdep=cv_dep)
-    ierr  = createvar   (ncout ,      stypvar , 2 , ipk,   id_varout  , cdglobal=TRIM(cglobal) ) 
-    ierr  = putheadervar(ncout ,      cf_in  ,  ikx, iky, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdep, cdep=cv_dep)
+    ncout = create      (cf_out , cf_in,  ikx, iky, npk)
+    ierr  = createvar   (ncout  , stypvar , 2 , ipk,   id_varout  , cdglobal=TRIM(cglobal) ) 
+    ierr  = putheadervar(ncout  , cf_in,  ikx, iky, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdep)
     dtim  = getvar1d(cf_in, cn_vtimec, npt )
     ierr  = putvar1d(ncout,  dtim, npt, 'T')
 

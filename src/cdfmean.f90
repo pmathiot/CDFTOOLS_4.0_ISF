@@ -244,16 +244,12 @@ PROGRAM cdfmean
   IF ( lbas ) lchk =  chkfile(cn_fbasins ) .OR. lchk
   IF ( lchk ) STOP 99 ! missing file
 
-  CALL finddimname(cf_in, cn_x)
-  CALL finddimname(cf_in, cn_y)
-  CALL finddimname(cf_in, cn_z)
-  CALL finddimname(cf_in, cn_t)
-
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
   npk    = getdim (cf_in, cn_z) 
-  npt   = getdim (cf_in, cn_t)
-  nvpk  = getvdim(cf_in, cv_nam)
+  npt    = getdim (cf_in, cn_t)
+  nvpk   = getvdim(cf_in, cv_nam)
+
   ! save original npiglo, npiglo
   npiglo_fi = npiglo
   npjglo_fi = npjglo
@@ -601,7 +597,7 @@ CONTAINS
     CALL SetGlobalAtt( cglobal , 'A')
 
     ! create output fileset
-    ncout = create      (cf_ncout,   'none',  ikx,   iky,   nvpk, cdep=cv_dep)
+    ncout = create      (cf_ncout,   cf_in,  ikx,   iky,   nvpk)
     ierr  = createvar   (ncout,      stypvar, nvars, ipk,   id_varout, cdglobal=TRIM(cglobal) )
     ierr  = putheadervar(ncout,      cf_in,  ikx, iky, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdep(1:nvpk), cdep=cv_dep)
     dtim  = getvar1d(cf_in, cn_vtimec, npt  )
@@ -646,6 +642,7 @@ CONTAINS
 
     ik=nvpk
     IF ( lnodep ) ik = 0  ! no depth variable in input file : the same in output file
+
     ncout = create      (cf_zerom, cf_in,        npiglo, npjglo, ik            )
     ierr  = createvar   (ncout ,   stypvarzero , nbasin, ipk,    id_varout     )
     ierr  = putheadervar(ncout,    cf_in,        npiglo, npjglo, ik , pdep=zdep)

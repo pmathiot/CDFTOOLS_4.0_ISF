@@ -1163,9 +1163,9 @@ CONTAINS
     ENDIF
 
     ! create output fileset
-    ncout = create      ( cf_moc,  'none',    1, npjglo, npk, cdep=cn_vdepthw )
-    ierr  = createvar   ( ncout,   stypvar,   nvarout,   ipk, id_varout, cdglobal=TRIM(cglobal)           )
-    ierr  = putheadervar( ncout,   cf_vfil,   1, npjglo, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdepw)
+    ncout = create      ( cf_moc,  cf_vfil, 1, npjglo, npk, cdimz='depthw' )
+    ierr  = createvar   ( ncout,   stypvar, nvarout,   ipk, id_varout, cdglobal=TRIM(cglobal)           )
+    ierr  = putheadervar( ncout,   cf_vfil, 1, npjglo, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdepw)
     dtim  = getvar1d    ( cf_vfil, cn_vtimec, npt                    )
     ierr  = putvar1d    ( ncout,  dtim,       npt, 'T')
 
@@ -1384,7 +1384,7 @@ CONTAINS
 
     PRINT*, 'idvar = ', idvar
 
-    ncout = create      ( cf_moc, 'none',  1, 1, npk, cdep=cn_vdepthw )
+    ncout = create      ( cf_moc, cf_vfil,  1, 1, npk, cdimz='depthw' )
     ierr  = createvar   ( ncout,  stypvar, nvarout,   ipk, id_varout                              )
     ierr  = putheadervar( ncout,  cf_vfil, 1, 1, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdepw)
 

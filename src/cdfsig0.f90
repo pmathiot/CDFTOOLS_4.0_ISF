@@ -46,7 +46,8 @@ PROGRAM cdfsig0
   CHARACTER(LEN=256)                        :: cv_tem             ! temperature name in netcdf
 
   TYPE (variable), DIMENSION(1)             :: stypvar            ! structure for attributes
-  LOGICAL                                   :: lnc4 = .FALSE.     ! flag for missing files
+  LOGICAL                                   :: lnc4  = .FALSE.     ! flag for missing files
+  LOGICAL                                   :: lsurf = .FALSE.     ! flag for missing files
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
 
@@ -61,6 +62,7 @@ PROGRAM cdfsig0
      PRINT *,'       -t T-file  : netcdf file with temperature and salinity.' 
      PRINT *,'      '
      PRINT *,'     OPTIONS :'
+     PRINT *,'       [-surf]          : variable used are '//TRIM(cn_sst)//' and '//TRIM(cn_sss)
      PRINT *,'       [-sal SAL-name]  : name of salinity variable'
      PRINT *,'       [-tem TEM-name]  : name of temperature variable'
      PRINT *,'       [-nc4]  : enable chunking and compression'
@@ -88,6 +90,7 @@ PROGRAM cdfsig0
      SELECT CASE ( cldum )
      CASE ( '-t'   ) ; CALL getarg(ijarg, cf_tfil) ; ijarg=ijarg+1
      CASE ( '-o'   ) ; CALL getarg(ijarg, cf_out ) ; ijarg=ijarg+1
+     CASE ( '-surf') ; cv_tem=cn_sst; cv_sal=cn_sss; lsurf=.TRUE.
      CASE ( '-sal' ) ; CALL getarg(ijarg, cv_sal ) ; ijarg=ijarg+1
      CASE ( '-tem' ) ; CALL getarg(ijarg, cv_tem ) ; ijarg=ijarg+1
      CASE ( '-nc4' ) ; lnc4 = .TRUE.
@@ -100,19 +103,12 @@ PROGRAM cdfsig0
   ! Look for missing value for salinity
   zsps = getspval(cf_tfil, cn_vosaline)
 
-  CALL finddimname(cf_tfil, cn_x)
-  CALL finddimname(cf_tfil, cn_y)
-  CALL finddimname(cf_tfil, cn_z)
-  CALL finddimname(cf_tfil, cn_t)
-
-  CALL findvarname(cf_tfil, cv_tem)
-  CALL findvarname(cf_tfil, cv_sal)
-
   npiglo = getdim (cf_tfil, cn_x)
   npjglo = getdim (cf_tfil, cn_y)
   npk    = getdim (cf_tfil, cn_z)
   npt    = getdim (cf_tfil, cn_t)
 
+  IF (lsurf) npk=1
   npkk=npk
   IF ( npk == 0 ) npkk=1
 
@@ -126,7 +122,6 @@ PROGRAM cdfsig0
   ALLOCATE (dtim(npt) )
 
   CALL CreateOutput
-  zsps = getspval( cf_tfil, cv_sal )
 
   DO jt=1,npt
      PRINT *,' TIME = ', jt, dtim(jt)/86400.,' days'
@@ -137,9 +132,9 @@ PROGRAM cdfsig0
         zsal(:,:) = getvar(cf_tfil, cv_sal, jk, npiglo, npjglo, ktime=jt)
 
         ! assuming spval is 0
-        WHERE( zsal == zsps ) zmask = 0
+        WHERE( zsal == 0 ) zmask = 0
 
-        zsig0(:,:) = sigma0 (ztemp, zsal, npiglo, npjglo )* zmask(:,:)
+        zsig0(:,:) = sigma0 (ztemp, zsal, npiglo, npjglo ) * zmask(:,:)
 
         ierr = putvar(ncout, id_varout(1), zsig0, jk, npiglo, npjglo, ktime=jt)
 
@@ -172,8 +167,8 @@ CONTAINS
     stypvar(1)%ichunk            = (/npiglo, MAX(1,npjglo/30), 1, 1 /)
 
     ! create output fileset
-    CALL findvarname(cf_tfil, cn_vdeptht)
-    ncout = create      (cf_out, cf_tfil, npiglo, npjglo, npk,       ld_nc4=lnc4, cdep=cn_vdeptht)
+    !
+    ncout = create      (cf_out, cf_tfil, npiglo, npjglo, npk,       ld_nc4=lnc4  )
     ierr  = createvar   (ncout,  stypvar, 1,      ipk,    id_varout, ld_nc4=lnc4  )
     ierr  = putheadervar(ncout,  cf_tfil, npiglo, npjglo, npk       )
 

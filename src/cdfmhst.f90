@@ -537,8 +537,8 @@ CONTAINS
     END DO
 
     ! create output fileset
-    ncout = create      (cf_outnc, cf_vtfil, 1,             npjglo, npko, cdep='depthv'                              )
-    ierr  = createvar   (ncout,    stypvar,  nbasinso*npvar, ipk,    id_varout                                       )
+    ncout = create      (cf_outnc, cf_vtfil, 1,             npjglo, npko )
+    ierr  = createvar   (ncout,    stypvar,  nbasinso*npvar, ipk, id_varout )
     ierr  = putheadervar(ncout,    cf_vtfil, 1,             npjglo, npko, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdep)
 
     dtim  = getvar1d (cf_vtfil, cn_vtimec, npt     ) 

@@ -551,9 +551,9 @@ CONTAINS
        ENDIF
     ENDIF
 
-    ncout = create      (cf_moc, 'none', 1,      npjglo, nbins,  cdep='sigma')
+    ncout = create      (cf_moc, cf_vfil, 1, npjglo, nbins,  cvdep='sigma')
     ierr  = createvar   (ncout,  stypvar, nvaro, ipk ,id_varout, cdglobal=cglobal)
-    ierr  = putheadervar(ncout,  cf_vfil, 1,     npjglo, nbins,  pnavlon=rdumlon, pnavlat=rdumlat, pdep=sigma)
+    ierr  = putheadervar(ncout,  cf_vfil, 1, npjglo, nbins,  pnavlon=rdumlon, pnavlat=rdumlat, pdep=sigma)
 
     dtim = getvar1d(cf_vfil, cn_vtimec, npt     )
     ierr = putvar1d(ncout,  dtim,       npt, 'T')
