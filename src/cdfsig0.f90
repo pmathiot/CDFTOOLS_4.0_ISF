@@ -31,7 +31,6 @@ PROGRAM cdfsig0
   INTEGER(KIND=4)                           :: ncout              ! ncid of output file
   INTEGER(KIND=4), DIMENSION(1)             :: ipk, id_varout     ! level and  varid's
 
-  REAL(KIND=4)                              :: zsps               ! missing value for salinity
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: ztemp              ! temperature
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: zsal               ! salinity
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: zsig0              ! sigma-0
@@ -90,7 +89,7 @@ PROGRAM cdfsig0
      SELECT CASE ( cldum )
      CASE ( '-t'   ) ; CALL getarg(ijarg, cf_tfil) ; ijarg=ijarg+1
      CASE ( '-o'   ) ; CALL getarg(ijarg, cf_out ) ; ijarg=ijarg+1
-     CASE ( '-surf') ; cv_tem=cn_sst; cv_sal=cn_sss; lsurf=.TRUE.
+     CASE ( '-surf') ; lsurf=.TRUE.
      CASE ( '-sal' ) ; CALL getarg(ijarg, cv_sal ) ; ijarg=ijarg+1
      CASE ( '-tem' ) ; CALL getarg(ijarg, cv_tem ) ; ijarg=ijarg+1
      CASE ( '-nc4' ) ; lnc4 = .TRUE.
@@ -99,9 +98,6 @@ PROGRAM cdfsig0
   ENDDO
 
   IF (chkfile(cf_tfil) ) STOP 99 ! missing file
-
-  ! Look for missing value for salinity
-  zsps = getspval(cf_tfil, cn_vosaline)
 
   npiglo = getdim (cf_tfil, cn_x)
   npjglo = getdim (cf_tfil, cn_y)

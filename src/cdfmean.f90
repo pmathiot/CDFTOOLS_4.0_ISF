@@ -668,12 +668,15 @@ CONTAINS
        CALL getarg( iiarg, cldum) ; iiarg=iiarg+1
     END DO
     nbasin=iiarg-ijarg-1
+
     ALLOCATE(cbasins(nbasin) )
     DO jbasin=1,nbasin
        CALL getarg( ijarg, cbasins(jbasin)) ; ijarg=ijarg+1
     END DO
     PRINT *, 'Basin File : ', TRIM(cn_fbasins)
     PRINT *, '  nbasin : ', nbasin
+    IF (nbasin==0) THEN; PRINT *, 'NBASIN=0, ERROR, STOP'; STOP 99 ; ENDIF
+
     DO jbasin = 1, nbasin
        PRINT *,'  basin ',jbasin,' : ',TRIM(cbasins(jbasin))
     END DO

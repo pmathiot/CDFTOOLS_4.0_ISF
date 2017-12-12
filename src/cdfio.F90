@@ -1445,7 +1445,13 @@ CONTAINS
 
     CALL ERR_HDL(NF90_OPEN(cdfile,NF90_NOWRITE,incid) )
 
-    IF ( lliom ) THEN  !
+    ! check for IOM style mesh_zgr or coordinates :
+    ! IOIPSL (x_a=y_a=1)(2.0)          IOM(3.0)           3.6
+    ! gdept(time,z,y_a,x_a)            gdept_0(t,z)    gdept_1d(t,z)
+    ! gdepw(time,z,y_a,x_a)            gdepw_0(t,z)    gdepw_1d(t,z)
+    !   e3t(time,z,y_a,x_a)            e3t_0(t,z)      e3t_1d(t,z)
+    !   e3w(time,z,y_a,x_a)            e3w_0(t,z)      e3w_1d(t,z)
+    IF ( cdfile == cn_fzgr ) THEN  !
       ierr = SetMeshZgrVersion ( ll_verbose )
       IF ( cdvar == cn_ve3t ) THEN
         SELECT CASE ( cg_zgr_ver )
@@ -1471,6 +1477,8 @@ CONTAINS
         CASE ( 'v3.0' ) ; clvar = 'e3w'
         CASE ( 'v3.6' ) ; clvar = 'e3w_0'
         END SELECT
+      ELSE
+        clvar = findvarname(cdfile,cdvar) 
       ENDIF
     ELSE
       clvar = findvarname(cdfile,cdvar)
@@ -2154,7 +2162,6 @@ CONTAINS
     CHARACTER(LEN=256)            :: clvar, clvdep   ! local name for cdf var (modified)
     LOGICAL :: ll_verbose=.TRUE.
     !!-------------------------------------------------------------------------
-    clvar = findvarname(cdfile,cdvar)
 
     istart(:) = 1
     icount(:) = 1
@@ -2169,16 +2176,58 @@ CONTAINS
     !   e3w(time,z,y_a,x_a)            e3w_0(t,z)      e3w_1d(t,z)
 
     ! change icount for 1D variables in mesh_zgr only
-    IF ( cdfile == cn_fzgr  ) THEN
+    IF ( cdfile == cn_fzgr ) THEN
        istatus=SetMeshZgrVersion ( ll_verbose ) 
        SELECT CASE ( cg_zgr_ver ) 
        CASE ( 'v2.0') ; icount(1)=1  ; icount(3)=kk
        CASE ( 'v3.0') ; icount(1)=kk ; icount(3)=1
        CASE ( 'v3.6') ; icount(1)=kk ; icount(3)=1
        END SELECT
+       
+       IF ( cdvar == cn_gdept) THEN
+          SELECT CASE ( cg_zgr_ver )
+             CASE ( 'v2.0')
+                clvar = 'gdept'
+             CASE ( 'v3.0')
+                clvar = 'gdept_0'
+             CASE ( 'v3.6')
+                clvar = 'gdept_1d'
+          END SELECT
+      ELSE IF ( cdvar == cn_gdepw) THEN
+         SELECT CASE ( cg_zgr_ver )
+            CASE ( 'v2.0')
+               clvar = 'gdepw'
+            CASE ( 'v3.0')
+               clvar = 'gdepw_0'
+            CASE ( 'v3.6')
+               clvar = 'gdepw_1d'
+         END SELECT
+      ELSE IF ( cdvar == cn_ve3t1d) THEN
+         SELECT CASE ( cg_zgr_ver )
+            CASE ( 'v2.0')
+               clvar = 'e3t'
+            CASE ( 'v3.0')
+               clvar = 'e3t_0'
+            CASE ( 'v3.6')
+               clvar = 'e3t_1d'
+         END SELECT
+      ELSE IF ( cdvar == cn_ve3w1d) THEN
+         SELECT CASE ( cg_zgr_ver )
+            CASE ( 'v2.0')
+               clvar = 'e3w'
+            CASE ( 'v3.0')
+               clvar = 'e3w_0'
+            CASE ( 'v3.6')
+               clvar = 'e3w_1d'
+         END SELECT
+      ELSE
+         clvar = findvarname(cdfile,cdvar)
+      ENDIF
+    ELSE
+       clvar = findvarname(cdfile,cdvar)
     ENDIF
     
-    istatus=NF90_INQ_VARID ( incid,clvar,id_var)
+    istatus=NF90_INQ_VARID(incid,clvar,id_var)
     istatus=NF90_GET_VAR(incid,id_var,getvare3,start=istart,count=icount)
     IF ( istatus /= 0 ) THEN
        PRINT *,' Problem in getvare3 for ', TRIM(clvar)
