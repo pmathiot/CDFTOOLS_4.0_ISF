@@ -87,6 +87,9 @@ PROGRAM cdfbottom
      STOP 
   ENDIF
 
+  ! default init
+  cv_dep=cn_z
+
   ijarg = 1
   DO WHILE ( ijarg <= narg )
      CALL getarg(ijarg, cldum) ; ijarg = ijarg + 1

@@ -2288,7 +2288,7 @@ CONTAINS
        ELSE
           clvlon2d=findvarname(cdfile, cn_vlon2d)
           IF ( TRIM(clvlon2d) == 'unknown') THEN
-              clvlon1d=findvarname(cdfile, cn_vlon2d)
+              clvlon1d=findvarname(cdfile, cn_vlon1d)
               IF ( TRIM(clvlon1d) == 'unknown' ) THEN
                 PRINT *, '... dummy value used!'
                 z2d = 0.
@@ -2309,7 +2309,7 @@ CONTAINS
        ELSE
           clvlat2d=findvarname(cdfile, cn_vlat2d)
           IF ( TRIM(clvlon2d) == 'unknown') THEN
-              clvlat1d=findvarname(cdfile, cn_vlat2d)
+              clvlat1d=findvarname(cdfile, cn_vlat1d)
               IF ( TRIM(clvlat1d) == 'unknown' ) THEN
                 PRINT *, '... dummy value used!'
                 z2d = 0.
