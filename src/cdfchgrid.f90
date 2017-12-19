@@ -125,20 +125,20 @@ PROGRAM cdfchgrid
   IF ( chkfile(cf_in) .OR. chkfile(cf_ref) ) STOP 99  ! missing files
 
   ! get domain dimension from input file
-  npiglo = getdim (cf_in, cn_x)
-  npjglo = getdim (cf_in, cn_y)
-  npk    = getdim (cf_in, cn_z)
-  npt    = getdim (cf_in, cn_t)
+  npiglo = getdim  (cf_in, cn_x)
+  npjglo = getdim  (cf_in, cn_y)
+  npk    = getdim  (cf_in, cn_z)
+  npt    = getdim  (cf_in, cn_t)
+  npkk   = getvdimz(cf_in, cv_in)
 
   IF ( npt == 0 ) THEN
      PRINT *, 'npt is forced to 1'
      npt = 1
   ENDIF
 
-  IF ( npk == 0 ) THEN
+  IF ( npkk == 0 ) THEN
+     PRINT *, '2d variable, npkk = 1'
      npkk = 1
-  ELSE
-     npkk = npk
   ENDIF
 
 
@@ -166,6 +166,7 @@ PROGRAM cdfchgrid
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo
   PRINT *, 'npk    = ', npk
+  PRINT *, 'npkk   = ', npkk
   PRINT *, 'npt    = ', npt
   PRINT *
   PRINT *,' OUTPUT GRID '
@@ -194,7 +195,7 @@ PROGRAM cdfchgrid
 
   CALL CreateOutput
 
-  PRINT *,' Working with ', TRIM(cv_in), npk
+  PRINT *,' Working with ', TRIM(cv_in), npkk
   DO jt = 1, npt
      DO jk = 1, npkk
         v2d(1:npiglo,1:npjglo) = getvar(cf_in, cv_in,  jk, npiglo, npjglo, ktime=jt)
@@ -371,9 +372,9 @@ CONTAINS
     ipk(1)=npkk
     stypvar(iivar)%ichunk = (/npigloout,MAX(1,npjgloout/30),1,1 /)
 
-    ncout = create      (cf_out,   cf_in  , npigloout, npjgloout, npk,   ld_nc4=lnc4  )
+    ncout = create      (cf_out,   cf_in  , npigloout, npjgloout, npkk,   ld_nc4=lnc4  )
     ierr  = createvar   (ncout   , stypvar(iivar), 1 , ipk  , id_varout, ld_nc4=lnc4, cdglobal=cglobal  )
-    ierr  = putheadervar(ncout,    cf_ref,  npigloout, npjgloout, npk , cdep=cn_vdeptht, pdep=rdep      )
+    ierr  = putheadervar(ncout,    cf_ref,  npigloout, npjgloout, npkk , pdep=rdep      )
 
     ! get time and write time and get deptht and write deptht
     dtim = getvar1d(cf_in,cn_t,npt)    ; ierr=putvar1d(ncout,dtim,npt,'T')

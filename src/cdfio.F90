@@ -169,7 +169,7 @@
   PUBLIC :: chkfile, chkvar
   PUBLIC :: copyatt, create, createvar, getvaratt, cvaratt, gettimeatt
   PUBLIC :: putatt, putheadervar, putvar, putvar1d, putvar0d, atted, puttimeatt
-  PUBLIC :: getatt, getdim, getvdim, getdimvar,getipk, getnvar, getvarname, getvarid
+  PUBLIC :: getatt, getdim, getvdim, getvdimz, getipk, getnvar, getvarname, getvarid
   PUBLIC :: getvar, getvarxz, getvaryz, getvar1d, getvare3, getvar3d, getvar3dt, getvar4d, getspval
   PUBLIC :: gettimeseries
   PUBLIC :: closeout, ncopen
@@ -1062,49 +1062,58 @@ CONTAINS
 
   END FUNCTION getvdim
 
-  FUNCTION getdimvar (cdfile, kpk, cd_depnam)
+    FUNCTION  getvdimz (cdfile,cdvar)
     !!---------------------------------------------------------------------
-    !!                  ***  FUNCTION getdimvar  ***
+    !!                  ***  FUNCTION getipk  ***
     !!
-    !! ** Purpose :  Try to infer the name of the depth variable associated
-    !!               with z dimension, and return the values as a 1d array 
+    !! ** Purpose : Return the number of vertical level for a specific variable
+    !!              in cdfile. Return 0 if the variable in 1d.
     !!
-    !! ** Method  :  Trial and error method ... 
+    !! ** Method  : returns nvpk when 4D variables ( x,y,z,t )
+    !!              returns  1   when 3D variables ( x,y,  t )
+    !!              returns  0   when other ( vectors )
     !!
     !!----------------------------------------------------------------------
-    CHARACTER(LEN=*), INTENT(in) :: cdfile
-    INTEGER(KIND=4),  INTENT(in) :: kpk
-    REAL(KIND=4), DIMENSION(kpk) :: getdimvar
-    CHARACTER(LEN=*), OPTIONAL, INTENT(out) :: cd_depnam
+    CHARACTER(LEN=*),           INTENT(in) :: cdfile   ! File to look at
+    CHARACTER(LEN=*),           INTENT(in) :: cdvar    ! Variable to look at
+    INTEGER(KIND=4)                        :: getvdimz ! vertical dimension size of cdvar
 
-    INTEGER(KIND=4) :: ji
-    INTEGER(KIND=4) :: incid, idims, iuldid, idimv, ivars, istatus
-    INTEGER(KIND=4), DIMENSION(4) :: idimt
-    CHARACTER(LEN=80) :: clvar ='none'
-    
+    INTEGER(KIND=4)    :: incid, ipk, jv, iipk, nlpk, id_var
+    INTEGER(KIND=4)    :: istatus
+    INTEGER(KIND=4), DIMENSION(:), ALLOCATABLE :: dimid
+    CHARACTER(LEN=256) :: cldep
     !!----------------------------------------------------------------------
-    istatus = NF90_OPEN   (cdfile,NF90_NOWRITE,incid)
-    istatus = NF90_INQUIRE(incid, ndimensions=idims, unlimiteddimid=iuldid,&
-                  &              nvariables=ivars)
-    ! look for variables with only one dim, not unlimited dim ...
-    DO ji = 1, ivars
-       istatus = NF90_INQUIRE_VARIABLE(incid, ji, name=clvar, ndims=idimv, &
-                  & dimids=idimt )
-       IF ( idimv == 1 ) THEN ! candidate
-          IF ( idimt(1) /= iuldid) THEN ! this is The Variable
-             PRINT *, ' Found vertical variable :', TRIM(clvar)
-             istatus = NF90_GET_VAR(incid, ji, getdimvar(:) )
-             EXIT
-          ENDIF
+    istatus=NF90_OPEN(cdfile,NF90_NOWRITE,incid)
+
+    ! Note the very important TRIM below : if not, getdim crashes as it never
+    ! find the correct dim !
+    iipk = getdim(cdfile, TRIM(cn_z), kstatus=istatus)
+    IF ( iipk==0 ) THEN
+       PRINT *,' getvdimz : vertical dim not found ...assume 1'
+       iipk=1
+    ELSE
+       istatus = NF90_INQ_VARID ( incid,cdvar,id_var)
+       IF (istatus == NF90_ENOTVAR) THEN
+          PRINT *, TRIM(cdvar),' not in input file ',TRIM(cdfile)
+          STOP 98
        ENDIF
-    ENDDO
-    IF ( present(cd_depnam) ) cd_depnam=TRIM(clvar)
-    IF ( ji == ivars +1 ) THEN
-       PRINT *,'Sorry, no vertical dim variables inferred ...'
-       getdimvar=0.
+       istatus=NF90_INQUIRE_VARIABLE(incid, jv, ndims=ipk)
+       IF (ipk == 4 ) THEN
+          ALLOCATE(dimid(ipk))
+          istatus=NF90_INQUIRE_VARIABLE(incid, jv, dimids=dimid)
+          istatus=NF90_INQUIRE_DIMENSION(incid, dimid(3), len=nlpk)
+          iipk = nlpk
+          DEALLOCATE(dimid)
+       ELSE IF (ipk == 3 ) THEN
+          iipk = 1
+       ELSE
+          iipk = 0
+       ENDIF
     ENDIF
+    getvdimz=iipk
+    istatus=NF90_CLOSE(incid)
+  END FUNCTION getvdimz
 
-  END FUNCTION
 
   INTEGER(KIND=4) FUNCTION  getnvar (cdfile)
     !!---------------------------------------------------------------------
