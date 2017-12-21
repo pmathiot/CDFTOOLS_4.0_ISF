@@ -72,7 +72,7 @@ PROGRAM cdfpsi
   CHARACTER(LEN=256)                        :: cv_outssh='sobarstfssh'    ! output variable name
   CHARACTER(LEN=256)                        :: cv_outotal='sobarstftotal' ! output variable name
   CHARACTER(LEN=256)                        :: cldum           ! dummy character variable
-  CHARACTER(LEN=512)                          :: cglobal         ! global attribute
+  CHARACTER(LEN=512)                        :: cglobal         ! global attribute
 
   TYPE(variable), DIMENSION(:), ALLOCATABLE :: stypvar         ! structure for attributes
 
@@ -270,7 +270,6 @@ PROGRAM cdfpsi
 
      DO jk = 1,npk
         IF ( ll_v ) THEN
-           PRINT *, 'read V file'
            zv(:,:) = getvar(cf_vfil, cn_vomecrty, jk, npiglo, npjglo, ktime=jt )
            IF ( lfull ) THEN ; e3v(:,:) = e31d(jk)
            ELSE              ; e3v(:,:) = getvar(cn_fe3v, cn_ve3v, jk, npiglo, npjglo, ktime=it, ldiom=.NOT.lg_vvl)
