@@ -33,8 +33,8 @@ PROGRAM cdfinfo
   REAL(KIND=4), DIMENSION(:),       ALLOCATABLE :: zdept                    ! depth array
 
   CHARACTER(LEN=256)                            :: cf_in                    ! file name
-  CHARACTER(LEN=256)                            :: cv_dep                   ! depth name
   CHARACTER(LEN=256)                            :: cldum                    ! dummy input variable
+  CHARACTER(LEN=256)                            :: cd_x, cd_y, cd_z, cd_t
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names                 ! array of var name
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: clv_dep                  ! possible choices for dep dimension
 
@@ -78,32 +78,17 @@ PROGRAM cdfinfo
 
   IF ( chkfile(cf_in) ) STOP 99 ! missing file
 
-  npiglo = getdim (cf_in,cn_x)
-  npjglo = getdim (cf_in,cn_y)
+  npiglo = getdim (cf_in,cn_x,cdtrue=cd_x)
+  npjglo = getdim (cf_in,cn_y,cdtrue=cd_y)
+  npk    = getdim (cf_in,cn_z,cdtrue=cd_z)
+  npt    = getdim (cf_in,cn_t,cdtrue=cd_t)
 
-  ! looking for npk among various possible name
-  idep_max=8
-  ALLOCATE ( clv_dep(idep_max) )
-  clv_dep(:) = (/cn_z,'z','sigma','nav_lev','levels','ncatice','icbcla','icbsect'/)
-  idep=1  ; ierr=1000
-  DO WHILE ( ierr /= 0 .AND. idep <= idep_max )
-     npk  = getdim (cf_in, clv_dep(idep), cdtrue=cv_dep, kstatus=ierr)
-     idep = idep + 1
-  ENDDO
-
-  IF ( ierr /= 0 ) THEN  ! none of the dim name was found
-     PRINT *,' assume file with no depth'
-     npk=0
-  ENDIF
-
-  npt    = getdim (cf_in,cn_t)
+  PRINT *, 'dimension names are : ',TRIM(cd_x), TRIM(cd_y), TRIM(cd_z), TRIM(cd_t)
 
   PRINT *, 'npiglo =', npiglo
   PRINT *, 'npjglo =', npjglo
   PRINT *, 'npk    =', npk
   PRINT *, 'npt    =', npt
-
-  PRINT *,' Depth dimension name is ', TRIM(cv_dep)
 
   nvars = getnvar(cf_in)
   PRINT *,' nvars =', nvars
@@ -120,9 +105,9 @@ PROGRAM cdfinfo
 
   IF ( ldep ) THEN
      ALLOCATE(zdept(npk) )
-     zdept = getdimvar (cf_in,  npk)
+     zdept = getvar1d(cf_in,cn_z,npk)
      ikloc= MINLOC( ABS(zdept - zdep) )
-     PRINT * ,' NEAREST_K ',ikloc(1)
+     PRINT * ,' NEAREST_K ',ikloc(1),' (',zdept(ikloc(1)),')'
   ENDIF
 
 END PROGRAM cdfinfo

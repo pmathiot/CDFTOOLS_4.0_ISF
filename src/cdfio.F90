@@ -245,6 +245,9 @@ CONTAINS
           istatus=NF90_PUT_ATT(kcout, kidvar, 'valid_max', 40.           )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'title', TRIM(cdvar)       )
           istatus=NF90_PUT_ATT(kcout, kidvar, 'long_name', 'Sigma bin limits')
+       CASE ('unknown')
+          PRINT *, 'variable unknown, no attribute available'
+          STOP 98
        END SELECT
     ENDIF
 
@@ -997,7 +1000,7 @@ CONTAINS
     INTEGER(KIND=4) :: jtry
     !!----------------------------------------------------------------------
     CHARACTER(LEN=256)                          :: clvar
-    clvar = findvarname(cdfile,cdvar)
+    clvar = findvarname(cdfile,cdvar, ld_verbose=.FALSE.)
 
     IF ( PRESENT (cdmissing) ) cdmissing = cn_missing_value
 
@@ -1320,11 +1323,12 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in) :: cdvar        ! variable name to work with
     CHARACTER(LEN=*), INTENT(in) :: cdfile       ! variable name to work with
     LOGICAL, OPTIONAL, INTENT(in):: ld_verbose
-    LOGICAL :: ll_verbose=.TRUE.
+    LOGICAL :: ll_verbose=.TRUE.   ! ll_verbose seems to be public, why and where it is specified ????
     CHARACTER(LEN=256) :: cvarname
     CHARACTER(LEN=256) :: findvarname
     INTEGER :: istatus, idx_var, jv, knvars, incid, id_var
 
+    ll_verbose = .TRUE.
     IF ( PRESENT(ld_verbose) ) ll_verbose = ld_verbose
 
     findvarname='unknown'
@@ -1343,7 +1347,6 @@ CONTAINS
           idx_var=INDEX('|'//TRIM(cdvar)//'|','|'//TRIM(cvarname)//'|')
           IF (idx_var /= 0) THEN
              findvarname=TRIM(cvarname)
-             PRINT *, 'Variable used is ',TRIM(findvarname)
              EXIT
           ENDIF
        END DO
@@ -1351,11 +1354,15 @@ CONTAINS
        findvarname=TRIM(cdvar)
     ENDIF
 
-    IF (idx_var==0 .AND. ll_verbose) THEN
-       PRINT *, 'Variable ',TRIM(cdvar)
-       PRINT *, 'not found in file ',TRIM(cdfile)
-       PRINT *, 'variable name set to unknown'
-    ENDIF
+    IF (ll_verbose) THEN
+       IF (idx_var==0) THEN
+          PRINT *, 'Variable ',TRIM(cdvar)
+          PRINT *, 'not found in file ',TRIM(cdfile)
+          PRINT *, 'variable name set to unknown'
+       ELSE
+          PRINT *, 'Variable used is ',TRIM(findvarname)
+       ENDIF
+    END IF
     istatus=NF90_CLOSE(incid)
   END FUNCTION
 
@@ -1490,7 +1497,7 @@ CONTAINS
         clvar = findvarname(cdfile,cdvar) 
       ENDIF
     ELSE
-      clvar = findvarname(cdfile,cdvar)
+      clvar = findvarname(cdfile,cdvar, ld_verbose=ll_verbose)
     ENDIF
 
     istatus=NF90_INQUIRE(incid, unlimitedDimId=id_dimunlim)
