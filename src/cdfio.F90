@@ -295,20 +295,19 @@ CONTAINS
     !!----------------------------------------------------------------------
     ! get dimname
     IF ( TRIM(cdfilref) /= 'none' ) THEN
+       ! IF NOT PRESENT needed to improve print (rm warning in print as it is overwrite later)
        ! find dimension name from ref file
-       cldimx = finddimname(cdfilref,cn_x)
-       cldimy = finddimname(cdfilref,cn_y)
-       cldimt = finddimname(cdfilref,cn_t)
+       IF (.NOT. PRESENT(cdimx)) cldimx = finddimname(cdfilref,cn_x)
+       IF (.NOT. PRESENT(cdimy)) cldimy = finddimname(cdfilref,cn_y)
+       IF (.NOT. PRESENT(cdimt)) cldimt = finddimname(cdfilref,cn_t)
        ! case z dimension needed, default name is the vertical dimension list
        IF ( kz /= 0 ) THEN 
-          ! PM IF to improve print (rm warning in print as it is overwrite
-          ! later)
           IF (.NOT. PRESENT(cdimz)) cldimz = finddimname(cdfilref,cn_z)
-          IF (.NOT. PRESENT(cvdep)) clvdep = cldimz
+          IF (.NOT. PRESENT(cvdep)) clvdep = findvarname(cdfilref,cn_z)
        END IF
-       clvlon2d = findvarname(cdfilref, cn_vlon2d)
-       clvlat2d = findvarname(cdfilref, cn_vlat2d)
-       clvtimec = findvarname(cdfilref, cn_vtimec)
+       IF (.NOT. PRESENT(cvlon2d)) clvlon2d = findvarname(cdfilref, cn_vlon2d)
+       IF (.NOT. PRESENT(cvlat2d)) clvlat2d = findvarname(cdfilref, cn_vlat2d)
+       IF (.NOT. PRESENT(cvtime )) clvtimec = findvarname(cdfilref, cn_vtimec)
     !
     ELSE
        ierr=0
@@ -329,7 +328,7 @@ CONTAINS
        IF (ierr > 0) STOP 98
     END IF
 
-    ! overwrite by argument if present (refile or not)
+    ! overwrite by argument if present (reffile or not)
     IF (PRESENT(cdimz) .AND. kz /= 0 ) cldimz = cdimz
     IF (PRESENT(cdimx)) cldimx = cdimx
     IF (PRESENT(cdimy)) cldimy = cdimy
