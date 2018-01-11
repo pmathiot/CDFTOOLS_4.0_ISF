@@ -29,7 +29,6 @@ PROGRAM cdfsigtrp_broken
   USE cdfio
   USE eos          ! for sigma0, sigmai
   USE modcdfnames  ! for ReadCdfNames
-  USE modutils     ! for SetGlobalAtt
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id: cdfsigtrp.f90 699 2013-06-24 14:17:21Z molines $
@@ -94,7 +93,6 @@ PROGRAM cdfsigtrp_broken
   CHARACTER(LEN=256)                            :: cf_outnc             ! output netcdf file (1d, 0d))
   CHARACTER(LEN=256)                            :: cv_dep               ! depth variable
   CHARACTER(LEN=256)                            :: cldum                ! dummy string
-  CHARACTER(LEN=256)                            :: cglobal              ! global attribute
   CHARACTER(LEN=80 )                            :: cfmt_9000            ! format string 
   CHARACTER(LEN=80 )                            :: cfmt_9001            ! format string
   CHARACTER(LEN=80 )                            :: cfmt_9002            ! format string
@@ -219,9 +217,6 @@ PROGRAM cdfsigtrp_broken
      dsigma_max = -dsigma_min
      dsigma_min = -dltsig
   ENDIF
-
-  ! define global attribute with command line
-  CALL SetGlobalAtt( cglobal)
 
   !! Commented Pedro   
   ! get the attribute iweight from vozocrtx
@@ -488,7 +483,7 @@ PROGRAM cdfsigtrp_broken
      ENDIF
 
      ncout = create      (cf_outnc, cf_brfi, ikx, iky, nbins, cdimz=cv_dep )
-     ierr  = createvar   (ncout,    stypvar, nboutput, ipk, id_varout, cdglobal=TRIM(cglobal))
+     ierr  = createvar   (ncout,    stypvar, nboutput, ipk, id_varout      )
      ierr  = putheadervar(ncout,    cf_brfi, ikx, iky, nbins, &
           &   pnavlon=rdumlon, pnavlat=rdumlat, pdep=REAL(dsigma_lev), cdep=cv_dep )
 
@@ -660,7 +655,7 @@ CONTAINS
     sl_typvar(ivar)%cshort_name    = 'velocity'
 
     icout = create      (cf_nc, cf_brfi,    npts, 1, nk )
-    ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout, cdglobal=TRIM(cglobal)     )
+    ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout )
     ierr  = putheadervar(icout, cf_brfi,   npts, 1, nk, &
          &   pnavlon=rlonlat, pnavlat=rlonlat )
 
@@ -714,8 +709,8 @@ CONTAINS
     sl_typvar(ivar)%clong_name     = TRIM(cprefixlongnam)//'cumulated_transport'
     sl_typvar(ivar)%cshort_name    = 'sumtrp'
 
-    icout = create      (cf_nc, cf_brfi, npts, 1, nbins, cvdep='levels'                 )
-    ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout, cdglobal=TRIM(cglobal)  )
+    icout = create      (cf_nc, cf_brfi, npts, 1, nbins, cvdep='levels' )
+    ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout         )
     ierr  = putheadervar(icout, cf_brfi, npts, 1, nbins, &
          &   pnavlon=rlonlat, pnavlat=rlonlat, pdep=REAL(dsigma_lev))
 

@@ -83,7 +83,6 @@ PROGRAM cdfsigintegr_pedro
   CHARACTER(LEN=256)                            :: cv_in            ! name of input variable
   CHARACTER(LEN=256)                            :: cldum            ! dummy string variable
   CHARACTER(LEN=256)                            :: cluni            ! dummy string variable for variable units
-  CHARACTER(LEN=256)                            :: cglobal          ! global attribute
   CHARACTER(LEN=256)                            :: ctype='T'        ! position of variable on C grid
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names         ! temporary arry for variable name in file
 
@@ -164,8 +163,6 @@ PROGRAM cdfsigintegr_pedro
         END SELECT
      END SELECT
   END DO
-
-  CALL SetGlobalAtt( cglobal )
 
   ! check for files existence
   lchk = lchk .OR. chkfile (cn_fzgr   )
@@ -389,9 +386,9 @@ PROGRAM cdfsigintegr_pedro
      !! Modified Pedro
      !cf_out=TRIM(cf_in)//'.integr'
      cf_out='cdfsigintegr_file'
-     ncout = create      (cf_out, cf_rho,  npiglo, npjglo, npiso                       )
-     ierr  = createvar   (ncout,  stypvar, 9,      ipk,    id_varout, cdglobal=cglobal )
-     ierr  = putheadervar(ncout,  cf_rho,  npiglo, npjglo, npiso, pdep=rho_lev         )
+     ncout = create      (cf_out, cf_rho,  npiglo, npjglo, npiso     )
+     ierr  = createvar   (ncout,  stypvar, 9,      ipk,    id_varout )
+     ierr  = putheadervar(ncout,  cf_rho,  npiglo, npjglo, npiso, pdep=rho_lev )
      ! copy time arrays in output file
      npt = getdim ( cf_ufil, cn_t)
      ALLOCATE ( dtim(npt) )

@@ -48,7 +48,6 @@ PROGRAM cdftransport
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
-  USE modutils       ! for global attribute
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -188,7 +187,6 @@ PROGRAM cdftransport
   CHARACTER(LEN=256)                          :: csection            ! section names
   CHARACTER(LEN=256)                          :: cvarname            ! variable names (root)
   CHARACTER(LEN=256)                          :: clongname           ! variable longname (root)
-  CHARACTER(LEN=512)                          :: cglobal             ! global attribute
   CHARACTER(LEN=256)                          :: cldum               ! dummy char variable
   CHARACTER(LEN=256)                          :: cline               ! dummy char variable
   CHARACTER(LEN=256)                          :: csfx='transports'   ! suffix for the netcdf outputfile
@@ -288,7 +286,6 @@ PROGRAM cdftransport
   itime  = 1
   nclass = 1
   ijarg  = 1
-  CALL SetGlobalAtt(cglobal)
 
   ! Browse command line for arguments and/or options
   DO WHILE (ijarg <= narg )
@@ -687,7 +684,7 @@ PROGRAM cdftransport
      CALL set_typvar( stypvar, csection, cvarname, clongname )
      cf_outnc = TRIM(csection)//'_'//TRIM(csfx)//'.nc'
      ncout    = create      (cf_outnc, cf_ufil, ikx,      iky, nclass, cdimz='depth_class')
-     ierr     = createvar   (ncout,    stypvar, nvarout,  ipk, id_varout, cdglobal=TRIM(cglobal) )
+     ierr     = createvar   (ncout,    stypvar, nvarout,  ipk, id_varout )
      ierr     = putheadervar(ncout,    cf_ufil, ikx, iky, nclass, pnavlon=rdum, pnavlat=rdum, pdep=rclass )
      dtim     = getvar1d    (cf_ufil,  cn_vtimec, npt                )
      ierr     = putvar1d    (ncout,    dtim(itime:itime),      1, 'T')

@@ -15,7 +15,6 @@ PROGRAM cdfmean
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
-  USE modutils     ! for SetGlobalAtt
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -592,9 +591,6 @@ CONTAINS
           stypvar(n_sum3d(jbasin))%caxis          = 'T'
        ENDIF
     ENDDO  ! basin loop
-
-    ! define global attribute with command line
-    CALL SetGlobalAtt( cglobal , 'A')
 
     ! create output fileset
     ncout = create      (cf_ncout,   cf_in,  ikx,   iky,   nvpk)

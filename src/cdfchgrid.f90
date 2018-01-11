@@ -56,7 +56,6 @@ PROGRAM cdfchgrid
   CHARACTER(LEN=256)                            :: cv_in                  ! variable name
   CHARACTER(LEN=256)                            :: cldum                  ! working string
   CHARACTER(LEN=256)                            :: cl_trf                 ! conversion key
-  CHARACTER(LEN=256)                            :: cglobal                ! Global attribute with command line
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names               ! array of var name
 
   TYPE (variable), DIMENSION(:),    ALLOCATABLE :: stypvar                ! structure for variable attribute
@@ -189,8 +188,6 @@ PROGRAM cdfchgrid
      ivar=ivar+1
      IF ( cv_names(ivar) == cv_in ) iivar=ivar
   END DO
-  cglobal="File produced with cdfchgrid "
-  CALL SetGlobalAtt( cglobal, "A" )
   rdep=getvar1d(cf_in,cn_z,npkk) 
 
   CALL CreateOutput
@@ -372,9 +369,9 @@ CONTAINS
     ipk(1)=npkk
     stypvar(iivar)%ichunk = (/npigloout,MAX(1,npjgloout/30),1,1 /)
 
-    ncout = create      (cf_out,   cf_in  , npigloout, npjgloout, npkk,   ld_nc4=lnc4  )
-    ierr  = createvar   (ncout   , stypvar(iivar), 1 , ipk  , id_varout, ld_nc4=lnc4, cdglobal=cglobal  )
-    ierr  = putheadervar(ncout,    cf_ref,  npigloout, npjgloout, npkk , pdep=rdep      )
+    ncout = create      (cf_out,   cf_in  , npigloout, npjgloout, npkk,  ld_nc4=lnc4 )
+    ierr  = createvar   (ncout   , stypvar(iivar), 1 , ipk  , id_varout, ld_nc4=lnc4 )
+    ierr  = putheadervar(ncout,    cf_ref,  npigloout, npjgloout, npkk , pdep=rdep   )
 
     ! get time and write time and get deptht and write deptht
     dtim = getvar1d(cf_in,cn_t,npt)    ; ierr=putvar1d(ncout,dtim,npt,'T')

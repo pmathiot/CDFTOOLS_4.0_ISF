@@ -11,7 +11,6 @@ PROGRAM cdfisf_diags
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
-  USE modutils
   !!----------------------------------------------------------------------
   !! CDFTOOLS_3.0 , MEOM 2011
   !! $Id: cdfsum.f90 716 2013-07-15 12:53:53Z molines $
@@ -99,10 +98,6 @@ PROGRAM cdfisf_diags
 
      STOP
   ENDIF
-
-  ! global attribute
-  ! setting up the building command in global attribute
-  CALL SetGlobalAtt (cglobal)  ! append command name to global attribute
 
   ! get argument
   CALL getarg (1, cf_in)
@@ -259,7 +254,7 @@ CONTAINS
 
     ! create output fileset
     ncout = create      (cf_out, cf_in, ikx, iky, nvpk)
-    ierr  = createvar   (ncout, stypvar, nisf, ipk, id_varout, cdglobal=TRIM(cglobal) )
+    ierr  = createvar   (ncout, stypvar, nisf, ipk, id_varout )
     ierr  = putheadervar(ncout, cf_in,  ikx, iky, nvpk, pnavlon=rdumlon, pnavlat=rdumlat )
 
     ! read/write time variable

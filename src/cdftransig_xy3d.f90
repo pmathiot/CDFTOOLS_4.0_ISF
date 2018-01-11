@@ -75,7 +75,6 @@ PROGRAM cdftransig_xy3d
   CHARACTER(LEN=80 )                           :: ctag 
   CHARACTER(LEN=80 )                           :: cldum
   CHARACTER(LEN=80 )                           :: cldepcode='1000'
-  CHARACTER(LEN=256)                           :: cglobal
   CHARACTER(LEN=7  )                           :: clsigma 
   CHARACTER(LEN=80 ),DIMENSION(:), ALLOCATABLE :: ctag_lst
 
@@ -250,10 +249,6 @@ PROGRAM cdftransig_xy3d
   ENDDO
   IF (lprint) PRINT *, ' nsigmax=' , nsigmax
   IF (lprint) PRINT *, ' verify itab:', itab
-
-  ! define new variables for output ( must update att.txt)
-  ! define output variables
-  CALL SetGlobalAtt(cglobal)
 
   PRINT *, 'npiglo = ', npiglo
   PRINT *, 'npjglo = ', npjglo
@@ -443,9 +438,9 @@ CONTAINS
   ! create output fileset
   IF (lprint) PRINT *, ' ready to create file:',TRIM( cf_out), ' from reference:',TRIM(cf_vfil )
 
-  ncout = create      (cf_out, cf_vfil, npiglo, npjglo, nbins,    cdimz=clsigma          , ld_nc4=lnc4  )
-  ierr  = createvar   (ncout,  stypvar, 2,      ipk,    id_varout, cdglobal=TRIM(cglobal), ld_nc4=lnc4  )
-  ierr  = putheadervar(ncout,  cf_vfil, npiglo, npjglo, nbins,     pdep=REAL(dsigma)      )
+  ncout = create      (cf_out, cf_vfil, npiglo, npjglo, nbins,     cdimz=clsigma, ld_nc4=lnc4 )
+  ierr  = createvar   (ncout,  stypvar, 2,      ipk,    id_varout, ld_nc4=lnc4                )
+  ierr  = putheadervar(ncout,  cf_vfil, npiglo, npjglo, nbins,     pdep=REAL(dsigma)          )
 
   END SUBROUTINE CreateOutput
 

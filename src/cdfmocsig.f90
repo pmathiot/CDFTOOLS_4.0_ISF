@@ -227,9 +227,6 @@ PROGRAM cdfmocsig
   PRINT *, 'npk    = ', npk
   PRINT *, 'npt    = ', npt
 
-  !setting up the building command in global attribute
-  CALL SetGlobalAtt(cglobal, 'A')  ! append command name to global attribute
-
   !  Detects newmaskglo file
   lbas = .NOT. chkfile (cn_fbasins )
 

@@ -9,7 +9,6 @@ MODULE modutils
   !!----------------------------------------------------------------------
   !!----------------------------------------------------------------------
   !!   routines      : description
-  !!   SetGlobalAtt  : Set Global Attribute to the command line
   !!   SetFilename   : Build standard name from confname
   !!   shapiro_fill_smooth : shapiro smoother or filler
   !!----------------------------------------------------------------------
@@ -25,7 +24,6 @@ MODULE modutils
   IMPLICIT NONE
 
   PRIVATE
-  PUBLIC SetGlobalAtt
   PUBLIC SetFileName
   PUBLIC GetList
   PUBLIC shapiro_fill_smooth

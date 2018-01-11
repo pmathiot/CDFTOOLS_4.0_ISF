@@ -21,7 +21,6 @@ PROGRAM cdfpsi
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
-  USE modutils
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -72,7 +71,6 @@ PROGRAM cdfpsi
   CHARACTER(LEN=256)                        :: cv_outssh='sobarstfssh'    ! output variable name
   CHARACTER(LEN=256)                        :: cv_outotal='sobarstftotal' ! output variable name
   CHARACTER(LEN=256)                        :: cldum           ! dummy character variable
-  CHARACTER(LEN=512)                        :: cglobal         ! global attribute
 
   TYPE(variable), DIMENSION(:), ALLOCATABLE :: stypvar         ! structure for attributes
 
@@ -140,7 +138,6 @@ PROGRAM cdfpsi
      STOP 
   ENDIF
 
-  CALL SetGlobalAtt (cglobal)
   iiref = -1 ; ijref= -1
 
   ijarg = 1
@@ -495,8 +492,8 @@ CONTAINS
        ENDIF
     ENDIF
     ! create output fileset
-    ncout = create      (cf_out, cf_ufil, npiglo, npjglo, 1                                , ld_nc4=lnc4 )
-    ierr  = createvar   (ncout,  stypvar, nvout,  ipk,    id_varout, cdglobal=TRIM(cglobal), ld_nc4=lnc4 )
+    ncout = create      (cf_out, cf_ufil, npiglo, npjglo, 1        , ld_nc4=lnc4 )
+    ierr  = createvar   (ncout,  stypvar, nvout,  ipk,    id_varout, ld_nc4=lnc4 )
     ierr  = putheadervar(ncout,  cf_ufil, npiglo, npjglo, 1, glamf, gphif)
 
     dtim = getvar1d(cf_ufil, cn_vtimec, npt     )

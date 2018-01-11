@@ -18,7 +18,6 @@ PROGRAM cdfsigintegr
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
-  USE modutils
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -70,7 +69,6 @@ PROGRAM cdfsigintegr
   CHARACTER(LEN=256)                            :: cv_in            ! name of input variable
   CHARACTER(LEN=256)                            :: cldum            ! dummy string variable
   CHARACTER(LEN=256)                            :: cluni            ! dummy string variable for variable units
-  CHARACTER(LEN=256)                            :: cglobal          ! global attribute
   CHARACTER(LEN=256)                            :: ctype='T'        ! position of variable on C grid
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names         ! temporary arry for variable name in file
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cf_lst           ! list of input files
@@ -157,8 +155,6 @@ PROGRAM cdfsigintegr
 
   IF ( ireq /= 3 ) THEN ; PRINT *,' missing arguments. Look to usage message !' ; STOP 99;
   ENDIF
-
-     CALL SetGlobalAtt( cglobal )
 
      ! check for files
      lchk = lchk .OR. chkfile (cn_fzgr   )
@@ -260,9 +256,9 @@ PROGRAM cdfsigintegr
 
         ! creation of output file is done within the file loop, but do not interfere with 
         ! possible parallelization as output files name are different.
-        ncout = create      (cf_out, cf_rho,  npiglo, npjglo, npiso                      , ld_nc4=lnc4 )
-        ierr  = createvar   (ncout,  stypvar, 4,      ipk,    id_varout, cdglobal=cglobal, ld_nc4=lnc4 )
-        ierr  = putheadervar(ncout,  cf_rho,  npiglo, npjglo, npiso, pdep=rho_lev                      )
+        ncout = create      (cf_out, cf_rho,  npiglo, npjglo, npiso    , ld_nc4=lnc4 )
+        ierr  = createvar   (ncout,  stypvar, 4,      ipk,    id_varout, ld_nc4=lnc4 )
+        ierr  = putheadervar(ncout,  cf_rho,  npiglo, npjglo, npiso, pdep=rho_lev    )
 
         ! copy time arrays in output file
         npt = getdim ( cf_in, cn_t)

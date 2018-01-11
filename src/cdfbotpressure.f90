@@ -50,7 +50,6 @@ PROGRAM cdfbotpressure
   CHARACTER(LEN=256)                        :: cf_in               ! input/output file
   CHARACTER(LEN=256)                        :: cf_out='botpressure.nc'   ! output file
   CHARACTER(LEN=256)                        :: cldum               ! dummy string for command line browsing
-  CHARACTER(LEN=256)                        :: cglobal             ! Global attribute
 
   LOGICAL                                   :: lfull =.FALSE.      ! flag for full step computation
   LOGICAL                                   :: lssh  =.FALSE.      ! Use ssh and cst surf. density in the bot pressure
@@ -124,7 +123,6 @@ PROGRAM cdfbotpressure
      END SELECT
   END DO
 
-  CALL SetGlobalAtt(cglobal)
   ALLOCATE ( ipk(nvar), id_varout(nvar), stypvar(nvar) )
 
   ! Security check
@@ -267,9 +265,9 @@ CONTAINS
     gdepw(:) = getvare3(cn_fzgr, cn_gdepw, npk )
     e31d(:)  = getvare3(cn_fzgr, cn_ve3t1d,  npk )
 
-    ncout = create      (cf_out, cf_in, npiglo, npjglo, 1                      , ld_nc4=lnc4  )
-    ierr  = createvar   (ncout, stypvar, nvar, ipk, id_varout, cdglobal=cglobal, ld_nc4=lnc4  )
-    ierr  = putheadervar(ncout, cf_in,   npiglo, npjglo, 1                                    )
+    ncout = create      (cf_out, cf_in, npiglo, npjglo, 1    , ld_nc4=lnc4  )
+    ierr  = createvar   (ncout, stypvar, nvar, ipk, id_varout, ld_nc4=lnc4  )
+    ierr  = putheadervar(ncout, cf_in,   npiglo, npjglo, 1                  )
 
     dtim  = getvar1d    (cf_in, cn_vtimec, npt     )
     ierr  = putvar1d    (ncout, dtim,      npt, 'T')

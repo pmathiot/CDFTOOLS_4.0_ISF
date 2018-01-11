@@ -13,7 +13,6 @@ PROGRAM cdfpdf
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
-  USE modutils
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -48,7 +47,6 @@ PROGRAM cdfpdf
   CHARACTER(LEN=256)                        :: cf_out='pdf.nc'
   CHARACTER(LEN=256)                        :: cv_nam
   CHARACTER(LEN=256)                        :: cldum
-  CHARACTER(LEN=256)                        :: cglobal
 
   TYPE(variable), DIMENSION(1)              :: stypvar           ! output data structure
 
@@ -252,11 +250,9 @@ CONTAINS
     stypvar(1)%cshort_name       = 'pdf_'//TRIM(cv_nam)
     stypvar(1)%conline_operation = 'N/A'
 
-    CALL SetGlobalAtt (cglobal)
-
     ! create output fileset
     ncout = create      (cf_out, cf_ifil, nbin, npt, 0      )
-    ierr  = createvar   (ncout,  stypvar, 1, ipk, id_varout , cdglobal=cglobal        )
+    ierr  = createvar   (ncout,  stypvar, 1, ipk, id_varout )
     ierr  = putheadervar(ncout,  cf_ifil, nbin, npt, 0 , pnavlon=zlon, pnavlat=ztimed )
 
   END SUBROUTINE CreateOutput

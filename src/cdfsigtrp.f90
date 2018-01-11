@@ -37,7 +37,6 @@ PROGRAM cdfsigtrp
   USE cdfio
   USE eos          ! for sigma0, sigmai
   USE modcdfnames  ! for ReadCdfNames
-  USE modutils     ! for SetGlobalAtt
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -109,7 +108,6 @@ PROGRAM cdfsigtrp
   CHARACTER(LEN=256)                            :: cf_root=''           !
   CHARACTER(LEN=256)                            :: cv_dep               ! depth variable
   CHARACTER(LEN=256)                            :: cldum                ! dummy string
-  CHARACTER(LEN=256)                            :: cglobal              ! global attribute
   CHARACTER(LEN=80 )                            :: cfmt_9000            ! format string 
   CHARACTER(LEN=80 )                            :: cfmt_9001            ! format string
   CHARACTER(LEN=80 )                            :: cfmt_9002            ! format string
@@ -286,9 +284,6 @@ PROGRAM cdfsigtrp
      dsigma_max = -dsigma_min
      dsigma_min = -dltsig
   ENDIF
-
-  ! define global attribute with command line
-  CALL SetGlobalAtt( cglobal)
 
   ! get the attribute iweight from vomecrty
   iweight = getatt(cf_ufil, cn_vomecrty, 'iweight')
@@ -788,9 +783,9 @@ CONTAINS
     sl_typvar(ivar)%cshort_name    = 'velocity'
 
     icout = create      (cf_nc, cf_tfil, npts, 1, nk )
-    ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout, cdglobal=TRIM(cglobal)     )
+    ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout )
     ierr  = putheadervar(icout, cf_tfil, npts, 1, nk, &
-         &   pnavlon=rlonlat, pnavlat=rlonlat, cdep=cn_vdeptht                              )
+         &   pnavlon=rlonlat, pnavlat=rlonlat, cdep=cn_vdeptht  )
 
     !    dtim = getvar1d(cf_tfil, cn_vtimec, 1     )
     !    ierr = putvar1d(icout,   dtim,     1 , 'T')
@@ -843,7 +838,7 @@ CONTAINS
     sl_typvar(ivar)%cshort_name    = 'sumtrp'
 
     icout = create      (cf_nc, cf_tfil,    npts, 1, nbins, cdimz='levels', cvdep='levels' )
-    ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout, cdglobal=TRIM(cglobal)  )
+    ierr  = createvar   (icout, sl_typvar, ivar, ipk, id_varout )
     ierr  = putheadervar(icout, cf_tfil,   npts, 1, nbins, &
          &   pnavlon=rlonlat, pnavlat=rlonlat, pdep=REAL(dsigma_lev), cdep='levels'      )
 
@@ -1021,9 +1016,9 @@ CONTAINS
     ENDIF
 
     ncout = create      (cf_outnc, cf_tfil, ikx,      iky, nbins, cdimz=cv_dep, cvdep=cv_dep) ! cdimz and cvdep from file ref overwrite by cv_dep
-    ierr  = createvar   (ncout,    stypvar, nboutput, ipk, id_varout, cdglobal=TRIM(cglobal))
+    ierr  = createvar   (ncout,    stypvar, nboutput, ipk, id_varout )
     ierr  = putheadervar(ncout,    cf_tfil, ikx,      iky, nbins, &
-         &   pnavlon=rdumlon, pnavlat=rdumlat, pdep=REAL(dsigma_lev), cdep=cv_dep           )
+         &   pnavlon=rdumlon, pnavlat=rdumlat, pdep=REAL(dsigma_lev), cdep=cv_dep)
 
     dtim = getvar1d(cf_tfil, cn_vtimec, 1     )
     ierr = putvar1d(ncout,   dtim,      1, 'T')

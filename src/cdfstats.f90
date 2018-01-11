@@ -12,7 +12,6 @@ PROGRAM cdfstats
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
-  USE modutils,  ONLY : SetGlobalAtt
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -48,7 +47,6 @@ PROGRAM cdfstats
   CHARACTER(LEN=256)                        :: cf_in, cf_ref          ! input and reference file names
   CHARACTER(LEN=256)                        :: cf_msk, cf_hgr         ! current mask and hgr file
   CHARACTER(LEN=256)                        :: cf_out = 'stats.nc'    ! output file
-  CHARACTER(LEN=256)                        :: cglobal                ! Global attribute
   CHARACTER(LEN=256)                        :: cldum                  ! dummy string for arguments
   CHARACTER(LEN=20)                         :: cv_name1, cv_name2     ! variable name
   CHARACTER(LEN=2)                          :: cy                     ! (1 or 12 ) 
@@ -117,7 +115,6 @@ PROGRAM cdfstats
   cf_hgr   = cn_fhgr
   cv_name1 = cn_sossheig  
   cv_name2 = cn_sossheig  
-  CALL SetGlobalAtt( cglobal )  ! global attribute for history : command line
 
   ! Browse command line
   ijarg = 1 
@@ -314,8 +311,8 @@ CONTAINS
   stypvar(4)%cshort_name       = 'srat'
 
   PRINT *,' creating output file'
-  ncout = create   (cf_out, cf_in,   npiglo, npjglo, npk                              , ld_nc4=lnc4)
-  ierr  = createvar(ncout,  stypvar, jpvar,  ipk,    id_varout, cdglobal=TRIM(cglobal), ld_nc4=lnc4)
+  ncout = create   (cf_out, cf_in,   npiglo, npjglo, npk      , ld_nc4=lnc4)
+  ierr  = createvar(ncout,  stypvar, jpvar,  ipk,    id_varout, ld_nc4=lnc4)
   ierr  = putheadervar(ncout,  cf_in, npiglo, npjglo, npk, ld_xycoo=.TRUE. )
 
   dtim = 1.d0

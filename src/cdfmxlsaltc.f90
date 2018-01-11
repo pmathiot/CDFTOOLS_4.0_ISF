@@ -14,7 +14,6 @@ PROGRAM cdfmxlsaltc
   !!----------------------------------------------------------------------
   USE cdfio
   USE modcdfnames
-  USE modutils
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -50,7 +49,6 @@ PROGRAM cdfmxlsaltc
   CHARACTER(LEN=256)                            :: cf_mfil             ! input file name with mld
   CHARACTER(LEN=256)                            :: cf_out='mxlsaltc.nc'! output file
   CHARACTER(LEN=256)                            :: cv_out='somxlsaltc' ! input file name
-  CHARACTER(LEN=256)                            :: cglobal             ! global attribute
   CHARACTER(LEN=256)                            :: cldum               ! dummy string
 
   TYPE(variable), DIMENSION(1)                  :: stypvar             ! stucture for attributes (output)
@@ -121,8 +119,6 @@ PROGRAM cdfmxlsaltc
      cn_fe3t = cf_tfil
      cn_ve3t = cn_ve3tvvl
   ENDIF
-
-  CALL SetGlobalAtt( cglobal )
 
   npiglo = getdim (cf_tfil,cn_x)
   npjglo = getdim (cf_tfil,cn_y)
@@ -213,9 +209,9 @@ CONTAINS
   stypvar(1)%caxis             = 'TYX'
 
   ! Initialize output file
-  ncout = create      (cf_out, cf_tfil, npiglo, npjglo, 1                          ,ld_nc4=lnc4 )
-  ierr  = createvar   (ncout,  stypvar, 1,      ipk,    id_varout, cdglobal=cglobal,ld_nc4=lnc4 )
-  ierr  = putheadervar(ncout,  cf_tfil, npiglo, npjglo, 1, pdep=rdep                )
+  ncout = create      (cf_out, cf_tfil, npiglo, npjglo, 1        , ld_nc4=lnc4 )
+  ierr  = createvar   (ncout,  stypvar, 1,      ipk,    id_varout, ld_nc4=lnc4 )
+  ierr  = putheadervar(ncout,  cf_tfil, npiglo, npjglo, 1, pdep=rdep           )
 
   dtim = getvar1d(cf_tfil, cn_vtimec, npt     )
   ierr = putvar1d(ncout,  dtim,       npt, 'T')

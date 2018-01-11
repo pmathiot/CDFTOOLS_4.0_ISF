@@ -61,7 +61,6 @@ PROGRAM cdfvertmean
   CHARACTER(LEN=256)                            :: cv_e31d             ! vertical metric name (full)
   CHARACTER(LEN=256)                            :: cv_msk              ! mask variable name
   CHARACTER(LEN=256)                            :: ctype='T'           ! position of the variable
-  CHARACTER(LEN=256)                            :: cglobal             ! global attribute
   CHARACTER(LEN=256)                            :: cldum               ! dummy string
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names            ! name of input variables
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_in               ! name of output variables
@@ -135,8 +134,6 @@ PROGRAM cdfvertmean
   lchk = chkfile (cn_fmsk) .OR. lchk
   lchk = chkfile (cf_in  ) .OR. lchk
   IF ( lchk  ) STOP 99 ! missing files
-
-  CALL SetGlobalAtt (cglobal)
 
   IF (rdep_down < rdep_up ) THEN
      PRINT *,'Give depth limits in increasing order !'
@@ -315,8 +312,8 @@ CONTAINS
     END DO
 
     ! Initialize output file
-    ncout = create      (cf_out, cf_in,   npiglo, npjglo, 1                          , ld_nc4=lnc4)
-    ierr  = createvar   (ncout,  stypvar, nvaro,  ipk,    id_varout, cdglobal=cglobal, ld_nc4=lnc4)
+    ncout = create      (cf_out, cf_in,   npiglo, npjglo, 1        , ld_nc4=lnc4)
+    ierr  = createvar   (ncout,  stypvar, nvaro,  ipk,    id_varout, ld_nc4=lnc4)
     ierr  = putheadervar(ncout,  cf_in,   npiglo, npjglo, 1, pdep=rdep)
 
     dtim = getvar1d(cf_in, cn_vtimec, npt     )
