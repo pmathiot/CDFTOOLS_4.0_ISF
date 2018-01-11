@@ -458,6 +458,7 @@ CONTAINS
     INTEGER(KIND=4), DIMENSION(4) :: iidims, ichunk
     INTEGER(KIND=4)               :: iprecision
     LOGICAL                       :: ll_nc4
+    CHARACTER(LEN=100000)         :: cl_global  ! issue with LEN=* in module
     !!----------------------------------------------------------------------
     IF ( PRESENT (ld_nc4 ) ) THEN 
        ll_nc4 = ld_nc4
@@ -511,8 +512,11 @@ CONTAINS
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv) )
           IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR in createvar ',TRIM(sdtyvar(jv)%cname)    ; STOP 98 ; ENDIF
 #endif
-          ! add attributes
-          istatus = putatt(sdtyvar(jv), kout, kidvo(jv), cdglobal=cdglobal)
+          ! add global attributes
+          IF ( .NOT. PRESENT(cdglobal)) THEN ; cl_global=SetGlobalAtt()
+          ELSE                               ; cl_global=SetGlobalAtt(cdglobal)
+          END IF
+          istatus = putatt(sdtyvar(jv), kout, kidvo(jv), cdglobal=cl_global)
           IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'putatt in createvar ',TRIM(sdtyvar(jv)%cname)    ; STOP 98 ; ENDIF
           createvar=istatus
        ENDIF
@@ -737,10 +741,8 @@ CONTAINS
     IF (putatt /= NF90_NOERR ) THEN ;PRINT *, NF90_STRERROR(putatt); PRINT *,' putatt for savelog10'        ; STOP 98; ENDIF
 
     ! Global attribute
-    IF ( PRESENT(cdglobal) ) THEN
-      putatt=NF90_PUT_ATT(kout,NF90_GLOBAL,'history',cdglobal)
-      IF (putatt /= NF90_NOERR ) THEN ;PRINT *, NF90_STRERROR(putatt); PRINT *,' putatt for history'        ; STOP 98; ENDIF
-    ENDIF
+    putatt=NF90_PUT_ATT(kout,NF90_GLOBAL,'history',cdglobal)
+    IF (putatt /= NF90_NOERR ) THEN ;PRINT *, NF90_STRERROR(putatt); PRINT *,' putatt for history'        ; STOP 98; ENDIF
 
   END FUNCTION putatt
 
@@ -1405,11 +1407,11 @@ CONTAINS
     !!---------------------------------------------------------------------
     CHARACTER(LEN=256)                          :: clvar
 
-    ! check if variable in the file
+    ! check if variable in the file   ! (PM) should maybe move out of getvar ???
     IF (chkfile(cdfile)) THEN
        STOP 98
     END IF
-    IF (chkvar(cdfile, cdvar)) THEN
+    IF (chkvar(cdfile, cdvar)) THEN   ! (PM) should maybe move out of getvar ???
        STOP 98
     END IF
 
@@ -3290,6 +3292,38 @@ CONTAINS
     SetMeshZgrVersion=1
 
   END FUNCTION SetMeshZgrVersion
+
+  CHARACTER(LEN=10000) FUNCTION SetGlobalAtt(cdglobal) 
+    !!---------------------------------------------------------------------
+    !!                  ***  ROUTINE SetGlobalAtt  ***
+    !!
+    !! ** Purpose : Append command line to the string given as argument.
+    !!              This is basically used for setting a global attribute 
+    !!              in the output files 
+    !!
+    !! ** Method  : Decrypt line command with getarg  
+    !!
+    !!----------------------------------------------------------------------
+    ! trouble with LEN * for function definition : A CHARACTER function name
+    ! must not be declared with an asterisk type-param-value
+    CHARACTER(LEN=*), OPTIONAL, INTENT(in) :: cdglobal
+
+    INTEGER(KIND=4)    :: iargc, inarg
+    INTEGER(KIND=4)    :: jarg
+    CHARACTER(LEN=256) :: cl_arg
+
+    CALL getarg(0, cl_arg)
+     IF (PRESENT(cdglobal)) THEN ; SetGlobalAtt = TRIM(cdglobal)//' ; '//TRIM(cl_arg)
+     ELSE                        ; SetGlobalAtt = TRIM(cl_arg)
+     END IF
+
+    inarg = iargc()
+    DO jarg=1, inarg
+       CALL getarg(jarg,cl_arg)
+       SetGlobalAtt = TRIM(SetGlobalAtt)//' '//TRIM(cl_arg)
+    END DO
+
+  END FUNCTION SetGlobalAtt
 
 
 END MODULE cdfio

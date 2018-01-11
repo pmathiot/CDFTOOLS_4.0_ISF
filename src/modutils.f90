@@ -34,46 +34,6 @@ MODULE modutils
   PUBLIC heading         ! compute true heading between point A and B
 
 CONTAINS
-  SUBROUTINE SetGlobalAtt(cdglobal, cd_append)
-    !!---------------------------------------------------------------------
-    !!                  ***  ROUTINE SetGlobalAtt  ***
-    !!
-    !! ** Purpose : Append command line to the string given as argument.
-    !!              This is basically used for setting a global attribute 
-    !!              in the output files 
-    !!
-    !! ** Method  : Decrypt line command with getarg  
-    !!
-    !!----------------------------------------------------------------------
-    CHARACTER(LEN=*),           INTENT(inout) :: cdglobal
-    CHARACTER(LEN=1), OPTIONAL, INTENT(in   ) :: cd_append
-
-    INTEGER(KIND=4)    :: iargc, inarg
-    INTEGER(KIND=4)    :: jarg
-    CHARACTER(LEN=100) :: cl_arg
-    CHARACTER(LEN=1  ) :: cl_app
-    !!----------------------------------------------------------------------
-    cl_app = 'N'
-    IF ( PRESENT( cd_append ) ) THEN 
-       cl_app = 'A'
-    ENDIF
-
-    CALL getarg(0, cl_arg)
-    SELECT CASE ( cl_app)
-    CASE ('A') 
-       cdglobal = TRIM(cdglobal)//' ; '//TRIM(cl_arg) 
-    CASE ('N') 
-       cdglobal = TRIM(cl_arg) 
-    END SELECT
-
-    inarg = iargc()
-    DO jarg=1, inarg
-       CALL getarg(jarg,cl_arg) 
-       cdglobal = TRIM(cdglobal)//' '//TRIM(cl_arg) 
-    END DO
-
-  END SUBROUTINE SetGlobalAtt
-
   CHARACTER(LEN=256) FUNCTION SetFileName(cdconf, cdtag, cdgrid ,ld_stop )
     !!---------------------------------------------------------------------
     !!                  ***  FUNCTION SetFileName  ***

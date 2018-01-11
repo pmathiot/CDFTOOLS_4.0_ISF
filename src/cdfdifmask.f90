@@ -127,7 +127,7 @@ CONTAINS
     ENDDO
     ipk(:) = npk
     stypvar(:)%cunits            = '1/0'
-    stypvar(:)%rmissing_value    = 9999.
+    stypvar(:)%rmissing_value    = -99.
     stypvar(:)%valid_min         = 0.
     stypvar(:)%valid_max         = 1.
     stypvar(:)%conline_operation = 'N/A'
@@ -140,8 +140,8 @@ CONTAINS
     stypvar(4)%cname=cn_fmask ;  stypvar(4)%clong_name=cn_fmask ;  stypvar(4)%cshort_name=cn_fmask
 
     ncout = create      (cf_out, cf_msk1, npiglo, npjglo, npk,      cdimz='z', cvdep='nav_lev', ld_nc4=lnc4 )
-    ierr  = createvar   (ncout,  stypvar, 4,      ipk,    id_varout                            , ld_nc4=lnc4 )
-    ierr  = putheadervar(ncout,  cf_msk1, npiglo, npjglo, npk,      cdep='nav_lev'                           )
+    ierr  = createvar   (ncout,  stypvar, 4,      ipk,    id_varout                           , ld_nc4=lnc4 )
+    ierr  = putheadervar(ncout,  cf_msk1, npiglo, npjglo, npk,      cdep='nav_lev'                          )
 
     dtim(:) = 0.d0
     ierr   = putvar1d(ncout, dtim, 1, 'T')
