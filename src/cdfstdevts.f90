@@ -93,8 +93,8 @@ PROGRAM cdfstdevts
 
   cl_votemper  = cn_votemper
   cl_vosaline  = cn_vosaline
-  cl_votemper2 = TRIM(cn_votemper)//'_sqd'
-  cl_vosaline2 = TRIM(cn_vosaline)//'_sqd'
+  cl_votemper2 = cn_votemper2 ! (PM) TRIM(cn_votemper)//'_sqd' added in the name list
+  cl_vosaline2 = cn_vosaline2 ! (PM) TRIM(cn_vosaline)//'_sqd' added in the name list
 
   ijarg = 1  
   DO WHILE ( ijarg <= narg) 
