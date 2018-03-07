@@ -109,9 +109,9 @@ PROGRAM cdfeke
   !! Initialisation from 1st file (all file are assume to have the same geometry)
   cf_u2fil='none' ; cf_v2fil='none'
   cl_vozocrtx  = cn_vozocrtx
-  cl_vozocrtx2 = TRIM(cn_vozocrtx)//'_sqd'
+  cl_vozocrtx2 = cn_vozocrtx2 ! (PM) TRIM(cn_vozocrtx)//'_sqd' moved into the variable list
   cl_vomecrty  = cn_vomecrty
-  cl_vomecrty2 = TRIM(cn_vomecrty)//'_sqd'
+  cl_vomecrty2 = cn_vomecrty2 ! (PM) TRIM(cn_vomecrty)//'_sqd' moved into the variable list
   ip_eke=0        ; ip_mke=0
   ijarg = 1 
   DO WHILE ( ijarg <= narg )
