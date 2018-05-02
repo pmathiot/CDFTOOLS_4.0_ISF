@@ -376,15 +376,15 @@ CONTAINS
        stypvar(2)%cshort_name = 'vostrvor'
        stypvar(3)%cshort_name = 'vototvor'
 
-       ncout = create      (cf_out, cf_tfil, npiglo, npjglo, npk       )
-       ierr  = createvar   (ncout,  stypvar, nvar,   ipk,    id_varout )
-       ierr  = putheadervar(ncout,  cf_tfil, npiglo, npjglo, npk       )
+       ncout = create      (cf_out, cf_tfil, npiglo, npjglo, npk       , ld_nc4=lnc4 )
+       ierr  = createvar   (ncout,  stypvar, nvar,   ipk,    id_varout , ld_nc4=lnc4 )
+       ierr  = putheadervar(ncout,  cf_tfil, npiglo, npjglo, npk                     )
     ELSE
        stypvar(1)%cname = 'volspv' ; stypvar(1)%clong_name = 'Large Scale Potential_vorticity'
        stypvar(1)%cshort_name = 'volspv'
-       ncout = create      (cf_out, cf_tfil, npiglo, npjglo, npk, cdimz='depthw' )
-       ierr  = createvar   (ncout,  stypvar, nvar,   ipk,    id_varout           )
-       ierr  = putheadervar(ncout,  cf_tfil, npiglo, npjglo, npk, pdep=gdepw     )
+       ncout = create      (cf_out, cf_tfil, npiglo, npjglo, npk, cdimz='depthw' , ld_nc4=lnc4 )
+       ierr  = createvar   (ncout,  stypvar, nvar,   ipk,    id_varout           , ld_nc4=lnc4 )
+       ierr  = putheadervar(ncout,  cf_tfil, npiglo, npjglo, npk, pdep=gdepw                   )
     ENDIF
 
     dtim = getvar1d(cf_ufil, cn_vtimec, npt      )

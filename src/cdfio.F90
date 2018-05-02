@@ -426,7 +426,6 @@ CONTAINS
        istatus = NF90_CLOSE(incid_ref)
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_CLOSE in create'    ; STOP 98 ; ENDIF
     END IF
-
     create=icout
   END FUNCTION create
 
@@ -522,6 +521,7 @@ CONTAINS
        ENDIF
     END DO
     istatus = NF90_ENDDEF(kout)
+    IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'enddef in createvar '    ; STOP 98 ; ENDIF
 
   END FUNCTION createvar
 
