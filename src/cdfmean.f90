@@ -58,7 +58,8 @@ PROGRAM cdfmean
   REAL(KIND=4), DIMENSION(:),    ALLOCATABLE :: e31d               ! 1d vertical spacing
   REAL(KIND=4), DIMENSION(1,1)               :: rdummy             ! dummy variable
   REAL(KIND=4), DIMENSION(:,:),  ALLOCATABLE :: e1, e2, e3, zv     ! metrics, velocity
-  REAL(KIND=4), DIMENSION(:,:),  ALLOCATABLE :: zmask, zvzm        ! npiglo x npjglo
+  REAL(KIND=4), DIMENSION(:,:),  ALLOCATABLE :: zvzm        !
+  REAL(KIND=4), DIMENSION(:,:),  ALLOCATABLE :: zmask, zmaskutil   ! mask
   REAL(KIND=4), DIMENSION(:,:),  ALLOCATABLE :: rdumlon, rdumlat   ! dummy lon/lat for output file
   REAL(KIND=4), DIMENSION(:,:),  ALLOCATABLE :: rdummymean         ! array for mean value on output file
 
@@ -77,6 +78,7 @@ PROGRAM cdfmean
   CHARACTER(LEN=20)                          :: cv_e1, cv_e2       ! horizontal metrics names
   CHARACTER(LEN=20)                          :: cv_e3, cv_e31d     ! vertical metrics names
   CHARACTER(LEN=20)                          :: cv_msk = ''        ! mask variable name
+  CHARACTER(LEN=20)                          :: cv_mskutil         !
   CHARACTER(LEN=256)                         :: cf_e3              ! name of the file holding vertical metrics
   CHARACTER(LEN=256)                         :: cf_in              ! input file name
   CHARACTER(LEN=256)                         :: cf_out   = 'cdfmean.txt' ! ASCII output file for mean
@@ -102,6 +104,7 @@ PROGRAM cdfmean
 
   LOGICAL                                    :: lbas      = .FALSE.! basin flag
   LOGICAL                                    :: lfull     = .FALSE.! full step  flag
+  LOGICAL                                    :: lsurf     = .FALSE.! surface    flag
   LOGICAL                                    :: lvar      = .FALSE.! variance  flag
   LOGICAL                                    :: lsum      = .FALSE.! sum  flag
   LOGICAL                                    :: lzeromean = .FALSE.! zero mean  flag
@@ -140,6 +143,7 @@ PROGRAM cdfmean
      PRINT *,'                  if kmin = 0 then ALL k are taken'
      PRINT *,'       [-full ] : compute the mean for full steps, instead of default '
      PRINT *,'              partial steps.'
+     PRINT *,'       [-surf ] : compute the mean without withing with the vertical metrics'
      PRINT *,'       [-var ]: also compute the spatial variance of IN-var.'
      PRINT *,'       [-zeromean ] : create a file with cdfvar having a zero spatial mean.'
      PRINT *,'       [-M MSK-file VAR-mask] : Allow the use of a non standard mask file '
@@ -202,6 +206,7 @@ PROGRAM cdfmean
      CASE ('-p'        ) ; CALL getarg(ijarg, ctype    ) ; ijarg = ijarg + 1
         ! options
      CASE ('-full'     ) ; lfull     = .TRUE.  ; cglobal = 'full step computation'
+     CASE ('-surf'     ) ; lsurf     = .TRUE.  
      CASE ('-var'      ) ; lvar      = .TRUE. 
      CASE ('-zeromean' ) ; lzeromean = .TRUE. 
      CASE ('-vvl'      ) ; lg_vvl    = .TRUE. 
@@ -274,7 +279,7 @@ PROGRAM cdfmean
 
   ! Allocate arrays
   ALLOCATE ( ibmask(nbasin,npiglo,npjglo) )
-  ALLOCATE ( zmask(npiglo,npjglo), zvzm(npiglo,npjglo) )
+  ALLOCATE ( zmask(npiglo,npjglo), zvzm(npiglo,npjglo), zmaskutil(npiglo,npjglo) )
   ALLOCATE ( zv   (npiglo,npjglo) )
   ALLOCATE ( e1   (npiglo,npjglo), e2(npiglo,npjglo), e3(npiglo,npjglo) )
   ALLOCATE ( dvariance3d(nbasin,npt), dvmeanout3d(nbasin,npt) )
@@ -292,8 +297,8 @@ PROGRAM cdfmean
      cv_e3    = cn_ve3t
      cv_e31d  = cn_ve3t1d
      IF (lg_vvl) cv_e3 = cn_ve3tvvl
-     IF (cv_msk   == '' ) THEN ; cv_msk = cn_tmask ;
-     ENDIF
+     IF (cv_msk   == '' ) cv_msk = cn_tmask
+     cv_mskutil = cn_tmaskutil
      cv_dep   = cn_gdept
   CASE ( 'U' )
      cv_e1    = cn_ve1u
@@ -302,8 +307,8 @@ PROGRAM cdfmean
      cv_e3    = cn_ve3u
      cv_e31d  = cn_ve3t1d
      IF (lg_vvl) cv_e3 = cn_ve3uvvl
-     IF (cv_msk   == '' ) THEN ; cv_msk = cn_umask ;
-     ENDIF
+     IF (cv_msk   == '' ) cv_msk = cn_umask 
+     cv_mskutil = cn_umaskutil
      cv_dep   = cn_gdept
   CASE ( 'V' )
      cv_e1    = cn_ve1v
@@ -312,18 +317,19 @@ PROGRAM cdfmean
      cv_e3    = cn_ve3v
      cv_e31d  = cn_ve3t1d
      IF (lg_vvl) cv_e3 = cn_ve3vvvl
-     IF (cv_msk   == '' ) THEN ; cv_msk = cn_vmask ;
-     ENDIF
+     IF (cv_msk   == '' ) cv_msk = cn_vmask
+     cv_mskutil = cn_vmaskutil
      cv_dep   = cn_gdept
-  CASE ( 'F' )   ! JMM : WARNING : e3f metrics is not written any where we take e3t for the time being 111
+  CASE ( 'F' )   
+     PRINT *, 'JMM : WARNING : e3f metrics is not written any where we take e3t for the time being 111'
      cv_e1    = cn_ve1f
      cv_e2    = cn_ve2f
      cf_e3    = cn_fe3t
      cv_e3    = cn_ve3t
      cv_e31d  = cn_ve3t1d
      IF (lg_vvl) cv_e3 = cn_ve3tvvl
-     IF (cv_msk   == '' ) THEN ; cv_msk = cn_fmask ;
-     ENDIF
+     IF (cv_msk   == '' ) cv_msk = cn_fmask 
+     cv_mskutil = cn_fmaskutil
      cv_dep   = cn_gdept
   CASE ( 'W' )
      cv_e1    = cn_ve1t
@@ -332,8 +338,8 @@ PROGRAM cdfmean
      cv_e3    = cn_ve3w
      cv_e31d  = cn_ve3w1d
      IF (lg_vvl) cv_e3 = cn_ve3wvvl
-     IF (cv_msk   == '' ) THEN ; cv_msk = cn_tmask ;
-     ENDIF
+     IF (cv_msk   == '' ) cv_msk = cn_tmask
+     cv_mskutil = cn_tmaskutil
      cv_dep   = cn_gdepw
   CASE DEFAULT
      PRINT *, 'this type of variable (-p option) is not known or missing :', TRIM(ctype)
@@ -376,6 +382,7 @@ PROGRAM cdfmean
   IF ( lg_vvl ) cf_e3 = cf_in
 
   DO jt=1,npt
+     zmaskutil(:,:) = getvar(cn_fmsk, cv_mskutil, 1, npiglo, npjglo, kimin=iimin,kjmin=ijmin          )
      IF ( lg_vvl ) THEN ; it = jt
      ELSE               ; it = 1
      ENDIF
@@ -387,8 +394,11 @@ PROGRAM cdfmean
         ! Get velocities v at ik
         zv   (:,:) = getvar(cf_in,   cv_nam, ik, npiglo, npjglo, kimin=iimin, kjmin=ijmin, ktime=jt)
         zmask(:,:) = getvar(cn_fmsk, cv_msk, ik, npiglo, npjglo, kimin=iimin, kjmin=ijmin          )
+        zmask(:,:) = zmask(:,:) * zmaskutil(:,:)
         IF ( lfull ) THEN
            e3(:,:) = e31d(jk)
+        ELSEIF ( lsurf ) THEN
+           e3(:,:) = 1.0
         ELSE
            e3(:,:) = getvar(cf_e3, cv_e3, ik, npiglo, npjglo, kimin=iimin, kjmin=ijmin, ktime=it, ldiom=.NOT.lg_vvl )
         ENDIF
@@ -407,7 +417,7 @@ PROGRAM cdfmean
 
            IF (dvol2d /= 0 )THEN
               dvmeanout(jk) = dsum2d/dvol2d
-              WRITE(6,*)' Mean value', TRIM(clbas), ' at level ',ik,'(',gdep(jk),' m) ',dvmeanout(jk), 'surface = ',dsurf/1.e6,' km^2'
+              WRITE(6,*)' Mean value', TRIM(clbas), ' at level ',ik,'(',gdep(jk),' m) ',dvmeanout(jk), ' sum = ',dsum2d, ' surface = ',dsurf/1.e6,' km^2'
               WRITE(numout,9004) gdep(jk), ik, dvmeanout(jk)
               IF ( lvar ) THEN
                  dvariance(jk) = dvar2d/dvol2d - dvmeanout(jk) * dvmeanout(jk)
