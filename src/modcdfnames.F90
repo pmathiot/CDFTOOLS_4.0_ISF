@@ -65,6 +65,9 @@ MODULE modCdfNames
   CHARACTER(LEN=256) :: cn_tmask='tmask', cn_umask='umask'   !:  tmask, umask
   CHARACTER(LEN=256) :: cn_vmask='vmask', cn_fmask='fmask'   !:  vmask, fmask
   CHARACTER(LEN=256) :: cn_tmaskutil='tmaskutil'             !:  tmaskutil
+  CHARACTER(LEN=256) :: cn_umaskutil='umaskutil'             !:  umaskutil
+  CHARACTER(LEN=256) :: cn_vmaskutil='vmaskutil'             !:  vmaskutil
+  CHARACTER(LEN=256) :: cn_fmaskutil='fmaskutil'             !:  fmaskutil
   CHARACTER(LEN=256) :: cn_polymask='polymask'               !:  polymask
   CHARACTER(LEN=256) :: cn_tmaskatl='tmaskatl'               !:  atlantic mask in cn_fbasins
   CHARACTER(LEN=256) :: cn_tmaskpac='tmaskpac'               !:  pacific mask in cn_fbasins
@@ -247,7 +250,7 @@ MODULE modCdfNames
     ! name of mesh_mask files
     NAMELIST/nammeshmask/ cn_fzgr, cn_fe3t, cn_fe3u, cn_fe3v, cn_fe3w, cn_fhgr, cn_fmsk, cn_fcoo, cn_fbasins
     ! mask variables
-    NAMELIST/nammask/ cn_tmask, cn_umask, cn_vmask, cn_fmask, cn_polymask, cn_tmaskutil
+    NAMELIST/nammask/ cn_tmask, cn_umask, cn_vmask, cn_fmask, cn_polymask, cn_tmaskutil, cn_umaskutil, cn_vmaskutil, cn_fmaskutil
     NAMELIST/nammask/ cn_tmaskatl, cn_tmaskpac, cn_tmaskind, cn_tmaskant, cn_tmaskmed
 
     ! Bathymetry
