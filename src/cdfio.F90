@@ -325,7 +325,10 @@ CONTAINS
              ierr=ierr+1
           ENDIF
        END IF
-       IF (ierr > 0) STOP 98
+       IF (ierr > 0) THEN
+          PRINT *, 'Dimensions and/or variable not defined'
+          STOP 98
+       END IF
     END IF
 
     ! overwrite by argument if present (reffile or not)
@@ -1409,9 +1412,11 @@ CONTAINS
 
     ! check if variable in the file   ! (PM) should maybe move out of getvar ???
     IF (chkfile(cdfile)) THEN
+       PRINT *, 'File '//TRIM(cdfile)//' is missing'
        STOP 98
     END IF
     IF (chkvar(cdfile, cdvar)) THEN   ! (PM) should maybe move out of getvar ???
+       PRINT *, 'Variable '//TRIM(cdvar)//' in file '//TRIM(cdfile)//' is missing'
        STOP 98
     END IF
 

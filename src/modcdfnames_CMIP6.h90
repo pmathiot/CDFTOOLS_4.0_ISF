@@ -99,7 +99,7 @@
   CHARACTER(LEN=256) :: cn_solwfldo='solwfldo' !: Long Wave downward Heat Flux
   CHARACTER(LEN=256) :: cn_soshfldo='soshfldo' !: Solar Heat FLux
 
-  CHARACTER(LEN=256) :: cn_sowaflup='sowaflup' !: Fresh Water Flux
+  CHARACTER(LEN=256) :: cn_sowaflup='|empmr|sowaflup|' !: Fresh Water Flux
   CHARACTER(LEN=256) :: cn_sowaflcd='sowaflcd' !: Concentration Dilution water flux
   CHARACTER(LEN=256) :: cn_sowafldp='sowafldp' !: SSS damping water Flux
   CHARACTER(LEN=256) :: cn_sorunoff='sorunoff' !: River Run-off
