@@ -312,7 +312,7 @@ PROGRAM cdfmoc
   CALL CreateOutput
 
   ! 1 : global ; 2 : Atlantic ; 3 : Indo-Pacif ; 4 : Indian ; 5 : Pacif
-  ibmask(npglo,:,:) = getvar(cn_fmsk,   cn_vmask, 1, npiglo, npjglo)
+  ibmask(npglo,:,:) = getvar(cn_fmsk,   cn_vmaskutil, 1, npiglo, npjglo)
   IF ( lbas ) THEN
      ibmask(npatl,:,:) = getvar(cn_fbasins, cn_tmaskatl, 1, npiglo, npjglo)
      ibmask(npind,:,:) = getvar(cn_fbasins, cn_tmaskind, 1, npiglo, npjglo)
