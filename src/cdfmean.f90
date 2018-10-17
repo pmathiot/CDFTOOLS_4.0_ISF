@@ -143,7 +143,8 @@ PROGRAM cdfmean
      PRINT *,'                  if kmin = 0 then ALL k are taken'
      PRINT *,'       [-full ] : compute the mean for full steps, instead of default '
      PRINT *,'              partial steps.'
-     PRINT *,'       [-surf ] : compute the mean without withing with the vertical metrics'
+     PRINT *,'       [-surf ] : compute the mean without the vertical metrics'
+     PRINT *,'                   option applied only if var depth dimension (nvpk) is 1 or 0'
      PRINT *,'       [-var ]: also compute the spatial variance of IN-var.'
      PRINT *,'       [-zeromean ] : create a file with cdfvar having a zero spatial mean.'
      PRINT *,'       [-M MSK-file VAR-mask] : Allow the use of a non standard mask file '
@@ -395,9 +396,10 @@ PROGRAM cdfmean
         zv   (:,:) = getvar(cf_in,   cv_nam, ik, npiglo, npjglo, kimin=iimin, kjmin=ijmin, ktime=jt)
         zmask(:,:) = getvar(cn_fmsk, cv_msk, ik, npiglo, npjglo, kimin=iimin, kjmin=ijmin          )
         zmask(:,:) = zmask(:,:) * zmaskutil(:,:)
+        IF (lsurf) zmask(:,:) = zmaskutil(:,:)
         IF ( lfull ) THEN
            e3(:,:) = e31d(jk)
-        ELSEIF ( lsurf ) THEN
+        ELSEIF ( nvpk == 1 .AND. lsurf ) THEN
            e3(:,:) = 1.0
         ELSE
            e3(:,:) = getvar(cf_e3, cv_e3, ik, npiglo, npjglo, kimin=iimin, kjmin=ijmin, ktime=it, ldiom=.NOT.lg_vvl )
@@ -561,9 +563,9 @@ CONTAINS
 
        ivar=ivar+1 ; n_mean3d(jbasin)=ivar
        ipk(n_mean3d(jbasin))            =  1
-       stypvar(n_mean3d(jbasin))%cname          = 'mean_3D'//TRIM(cv_nam)//TRIM(cl_suffix)
-       stypvar(n_mean3d(jbasin))%clong_name     = 'mean_3D'//TRIM(cllong_name)//TRIM(cl_suffix)
-       stypvar(n_mean3d(jbasin))%cshort_name    = 'mean_3D'//TRIM(clshort_name)//TRIM(cl_suffix)
+       stypvar(n_mean3d(jbasin))%cname          = 'mean_3D_'//TRIM(cv_nam)//TRIM(cl_suffix)
+       stypvar(n_mean3d(jbasin))%clong_name     = 'mean_3D_'//TRIM(cllong_name)//TRIM(cl_suffix)
+       stypvar(n_mean3d(jbasin))%cshort_name    = 'mean_3D_'//TRIM(clshort_name)//TRIM(cl_suffix)
        stypvar(n_mean3d(jbasin))%caxis          = 'T'
 
        IF ( lvar) THEN
@@ -578,9 +580,9 @@ CONTAINS
           ivar=ivar+1 ; n_var3d(jbasin)=ivar
           ipk(n_var3d(jbasin))            =  1
           stypvar(n_var3d(jbasin))%cunits         = TRIM(clunits)//'^2'
-          stypvar(n_var3d(jbasin))%cname          = 'var_3D'//TRIM(cv_nam)//TRIM(cl_suffix)
-          stypvar(n_var3d(jbasin))%clong_name     = 'var_3D'//TRIM(cllong_name)//TRIM(cl_suffix)
-          stypvar(n_var3d(jbasin))%cshort_name    = 'var_3D'//TRIM(clshort_name)//TRIM(cl_suffix)
+          stypvar(n_var3d(jbasin))%cname          = 'var_3D_'//TRIM(cv_nam)//TRIM(cl_suffix)
+          stypvar(n_var3d(jbasin))%clong_name     = 'var_3D_'//TRIM(cllong_name)//TRIM(cl_suffix)
+          stypvar(n_var3d(jbasin))%cshort_name    = 'var_3D_'//TRIM(clshort_name)//TRIM(cl_suffix)
           stypvar(n_var3d(jbasin))%caxis          = 'T'
        ENDIF
        IF ( lsum ) THEN
@@ -595,9 +597,9 @@ CONTAINS
           ivar=ivar+1 ; n_sum3d(jbasin)=ivar
           ipk(n_sum3d(jbasin))            =  1
           stypvar(n_sum3d(jbasin))%cunits         = TRIM(clunits)//'.m^3'
-          stypvar(n_sum3d(jbasin))%cname          = 'sum_3D'//TRIM(cv_nam)//TRIM(cl_suffix)
-          stypvar(n_sum3d(jbasin))%clong_name     = 'sum_3D'//TRIM(cllong_name)//TRIM(cl_suffix)
-          stypvar(n_sum3d(jbasin))%cshort_name    = 'sum_3D'//TRIM(clshort_name)//TRIM(cl_suffix)
+          stypvar(n_sum3d(jbasin))%cname          = 'sum_3D_'//TRIM(cv_nam)//TRIM(cl_suffix)
+          stypvar(n_sum3d(jbasin))%clong_name     = 'sum_3D_'//TRIM(cllong_name)//TRIM(cl_suffix)
+          stypvar(n_sum3d(jbasin))%cshort_name    = 'sum_3D_'//TRIM(clshort_name)//TRIM(cl_suffix)
           stypvar(n_sum3d(jbasin))%caxis          = 'T'
        ENDIF
     ENDDO  ! basin loop
@@ -670,10 +672,11 @@ CONTAINS
     !!----------------------------------------------------------------------
     iiarg=ijarg
     cldum='xxxx'
+    nbasin=0
     DO WHILE ( cldum(1:1) /= '-' .AND. iiarg <= narg )
        CALL getarg( iiarg, cldum) ; iiarg=iiarg+1
+       nbasin=nbasin+1
     END DO
-    nbasin=iiarg-ijarg-1
 
     ALLOCATE(cbasins(nbasin) )
     DO jbasin=1,nbasin
