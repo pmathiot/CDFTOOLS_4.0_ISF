@@ -48,7 +48,7 @@ PROGRAM cdfmkmask
   REAL(KIND=4)                              :: rlonpts, rlatpts         ! seed point for lfilllonlat
   REAL(KIND=4)                              :: rvarmin, rvarmax         ! limit in variable
   REAL(KIND=4), DIMENSION(:)  , ALLOCATABLE :: rdep                     ! depth 
-  REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: tmask, zmask, ssmask     ! 2D masks at current level and non depth and time dependent mask
+  REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: tmask, zmask, ssmask, tmask_bck     ! 2D masks at current level and non depth and time dependent mask
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: rlon, rlat               ! latitude and longitude
   REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: rbat                     ! bathymetry 
 
@@ -74,6 +74,7 @@ PROGRAM cdfmkmask
   LOGICAL                                   :: ltime    = .FALSE.       ! time flag    
   LOGICAL                                   :: lmbathy  = .FALSE.       ! mbathy flag    
   LOGICAL                                   :: l2dmask  = .FALSE.       ! 2d mask flag
+  LOGICAL                                   :: lreverse = .FALSE.       ! reverse selection flag
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
 
@@ -86,7 +87,7 @@ PROGRAM cdfmkmask
      PRINT *,'                   ... [-fill iipoint jjpoint] ...'
      PRINT *,'                   ... [-bfij txt_file] ...'
      PRINT *,'                   ... [-bflatlon txt_file] ...'
-     PRINT *,'                   ... [-time ] [-o OUT-file]'
+     PRINT *,'                   ... [-time ] [-r] [-o OUT-file]'
      PRINT *,'      '
      PRINT *,'     PURPOSE :'
      PRINT *,'       Builds a mask file from vosaline array read from the input file.' 
@@ -137,6 +138,7 @@ PROGRAM cdfmkmask
      PRINT *,'                        Section is exclude from the selection if linc=F .'
      PRINT *,'       [-time ] : If further time step is available'
      PRINT *,'                        a mask for each time step is done'
+     PRINT *,'       [-r]     : reverse the final selection'
      PRINT *,'       [-o OUT-file ] : output file name to be used in place of standard'
      PRINT *,'                        name [ ',TRIM(cf_out),' ]'
      PRINT *,'      '
@@ -199,6 +201,8 @@ PROGRAM cdfmkmask
         CALL getarg (ijarg, cf_boundary) ; ijarg = ijarg + 1
      CASE ( '-time' )  ! create a mask for each time step of the file
         ltime=.TRUE.
+     CASE ( '-r'    )  !
+        lreverse=.TRUE.
      CASE ( '-o'    )  ! change output file name
         CALL getarg (ijarg, cf_out) ; ijarg = ijarg + 1
         !
@@ -219,13 +223,11 @@ PROGRAM cdfmkmask
   IF (TRIM(cf_tfil)=='-maskfile') THEN
      cv_mask = cn_tmask
      cf_tfil = cn_fmsk
-     cn_z    = 'z'
   END IF
 
   IF (TRIM(cf_tfil)=='-2dmaskfile') THEN
      cv_mask = 'tmaskutil'
      cf_tfil = cn_fmsk
-     cn_z    = 'z'
      l2dmask=.TRUE.
   END IF
 
@@ -233,7 +235,6 @@ PROGRAM cdfmkmask
      cv_mask = cn_mbathy
      cv_dep  = 'nav_lev'
      cf_tfil = 'bathylevel.nc'
-     cn_z    = 'z'
      lmbathy = .TRUE.
      IF ( chkfile(cn_fzgr) ) STOP 99 ! missing file
   END IF
@@ -278,7 +279,7 @@ PROGRAM cdfmkmask
   CALL CreateOutput
 
   !! Allocate only usefull variable and read only usefull variable
-  ALLOCATE (tmask(npiglo,npjglo), zmask(npiglo,npjglo), ssmask(npiglo,npjglo))
+  ALLOCATE (tmask(npiglo,npjglo), zmask(npiglo,npjglo), ssmask(npiglo,npjglo), tmask_bck(npiglo,npjglo))
   ssmask(:,:) = 1.
 
   !! apply constraint constant over time and depth
@@ -329,6 +330,7 @@ PROGRAM cdfmkmask
 
         tmask(:,:) = getvar(cf_tfil, cv_mask,  jk, npiglo, npjglo, ktime=jt)
         tmask(:,:) = tmask(:,:) * ssmask(:,:)
+        tmask_bck(:,:) = tmask(:,:)
 
         !! variable constrain
         IF ( lzoomvar ) THEN
@@ -343,8 +345,20 @@ PROGRAM cdfmkmask
 
         !! fill constrain
         IF ( lfill .OR. lfilllonlat ) THEN
-           CALL FillMask(tmask,iipts,ijpts,rlonpts,rlatpts)
+           zmask=tmask
+           CALL FillMask(zmask,iipts,ijpts,rlonpts,rlatpts)
+           tmask=zmask
         ENDIF
+    
+        !! reverse selection
+        IF ( lreverse ) THEN
+           tmask = -1 * tmask
+           WHERE (tmask == 0 ) 
+              tmask = tmask_bck
+           ELSE WHERE
+              tmask = 0
+           END WHERE
+        END IF
  
         !! write t- u- v- mask
         ierr       = putvar(ncout, id_varout(1), tmask, jk ,npiglo, npjglo, ktime=jt)
