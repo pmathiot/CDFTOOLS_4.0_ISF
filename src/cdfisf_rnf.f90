@@ -204,22 +204,22 @@ PROGRAM cdfisf_rnf
      WHERE (isfindex_wk /=  -ifill ) isfindex_wk = 0
 
      ! find the j-limits for the current ice shelf 
-     isum(:)=SUM(isfindex_wk,dim=1)
-     ijmin = npjglo ; ijmax=2
-     DO jj=ijseed, 2, -1
-        IF ( isum(jj) /= 0 ) THEN
-           ijmin=jj
-        ENDIF
-     ENDDO
-     DO jj=ijseed, npjglo-1
-        IF ( isum(jj) /= 0 ) THEN
-           ijmax=jj
-        ENDIF
-     ENDDO
-
      DO jw = 1,nwidth
+        isum(:)=SUM(isfindex_wk,dim=1)
+        ijmin = npjglo ; ijmax=2
+        DO jj=npjglo, 3, -1
+           IF ( isum(jj) /= 0 ) THEN
+              ijmin=jj
+           ENDIF
+        ENDDO
+        DO jj=1, npjglo-2
+           IF ( isum(jj) /= 0 ) THEN
+              ijmax=jj
+           ENDIF
+        ENDDO
+
         DO ji=2,npiglo-1
-           DO jj = ijmin, ijmax
+           DO jj = ijmin-1, ijmax+1
               IF ( zdrft(ji,jj) == 0 .AND.  &    ! not under ice_shelf
                    &    bathy(ji,jj) /= 0 .AND.  &    ! but in the ocean
                    &    MINVAL(isfindex_wk(ji-1:ji+1 , jj-1:jj+1)) == -ifill  .AND. &  ! 
