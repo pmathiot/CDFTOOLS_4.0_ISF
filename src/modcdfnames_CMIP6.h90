@@ -4,7 +4,7 @@
   CHARACTER(LEN=256) :: cn_x='|x|X|lon|x_grid_T|x_grid_U|x_grid_V|x_grid_W|'               !: longitude, I dimension
   CHARACTER(LEN=256) :: cn_y='|y|Y|lat|y_grid_T|y_grid_U|y_grid_V|y_grid_W|'               !: latitude,  J dimension
   CHARACTER(LEN=256) :: cn_z='|z|depth|deptht|depthu|depthv|depthw|sigma|nav_lev|levels|ncatice|icbcla|icbsect|'             !: depth, z dimension
-  CHARACTER(LEN=256) :: cn_t='|time_counter|time|t|'   !: time dimension
+  CHARACTER(LEN=256) :: cn_t='|time_counter|time|t|time_instant|'   !: time dimension
 
   ! Dimension variable
   CHARACTER(LEN=256) :: cn_vlon2d  = '|nav_lon|lon|nav_lon_grid_T|nav_lon_grid_U|nav_lon_grid_V|'      !: longitude
@@ -13,7 +13,7 @@
   CHARACTER(LEN=256) :: cn_vdepthu = 'depthu'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthv = 'depthv'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthw = 'depthw'       !: depth
-  CHARACTER(LEN=256) :: cn_vtimec  = '|time_centered|time|time_counter|' !: time 
+  CHARACTER(LEN=256) :: cn_vtimec  = '|time_centered|time|time_counter|time_instant|' !: time 
   CHARACTER(LEN=256) :: cn_vlon1d  = '|lon|longitude|'                   !: longitude 1d
   CHARACTER(LEN=256) :: cn_vlat1d  = '|lat|latitude|'                    !: latitude  1d
 
@@ -30,8 +30,8 @@
   CHARACTER(LEN=256) :: cn_ve3t='|e3t_0|e3t|thkcello|', cn_ve3w='|e3w_0|e3w|thkcello|'   !: e3. ( 3D). 
   CHARACTER(LEN=256) :: cn_ve3u='|e3u_0|e3u|thkcello|', cn_ve3v='|e3v_0|e3v|thkcello|'   !: e3.
   ! VVL case [ In CPMIP so far, only one name is used. ]
-  CHARACTER(LEN=256) :: cn_ve3tvvl='thkcello', cn_ve3wvvl='thkcello'   !: e3. (3D). 
-  CHARACTER(LEN=256) :: cn_ve3uvvl='thkcello', cn_ve3vvvl='thkcello'   !: e3.
+  CHARACTER(LEN=256) :: cn_ve3tvvl='|thkcello|e3t|', cn_ve3wvvl='|thkcello|e3w|'   !: e3. (3D). 
+  CHARACTER(LEN=256) :: cn_ve3uvvl='|thkcello|e3u|', cn_ve3vvvl='|thkcello|e3v|'   !: e3.
 
   CHARACTER(LEN=256) :: cn_vff='ff'
 
@@ -159,9 +159,9 @@
   CHARACTER(LEN=256) :: cn_fbathymet='bathy_meter.nc' !: file Bathymetry in meters
   CHARACTER(LEN=256) :: cn_fbathylev='bathy_level.nc' !: file Bathymetry in levels
 
-  CHARACTER(LEN=256) :: cn_bathymet='Bathymetry' !: variable Bathymetry in meters
+  CHARACTER(LEN=256) :: cn_bathymet='|Bathymetry|bathy|' !: variable Bathymetry in meters
   CHARACTER(LEN=256) :: cn_bathylev='bathy_level'!: variable Bathymetry in levels
-  CHARACTER(LEN=256) :: cn_mbathy  ='mbathy'     !: variable mbathy in levels
+  CHARACTER(LEN=256) :: cn_mbathy  ='|mbathy|bottom_level|'     !: variable mbathy in levels
 
   ! variables to be squared when performing cdfmoy
   INTEGER(KIND=4), PARAMETER :: jp_sqdvarmax=10

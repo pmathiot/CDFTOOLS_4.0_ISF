@@ -168,7 +168,7 @@ MODULE modCdfNames
   CHARACTER(LEN=256) :: cn_fbathymet='bathy_meter.nc' !: file Bathymetry in meters
   CHARACTER(LEN=256) :: cn_fbathylev='bathy_level.nc' !: file Bathymetry in levels
 
-  CHARACTER(LEN=256) :: cn_bathymet='Bathymetry' !: variable Bathymetry in meters
+  CHARACTER(LEN=256) :: cn_bathymet=|'Bathymetry'|'bathy'| !: variable Bathymetry in meters
   CHARACTER(LEN=256) :: cn_bathylev='bathy_level'!: variable Bathymetry in levels
   CHARACTER(LEN=256) :: cn_mbathy  ='mbathy'     !: variable mbathy in levels
 
