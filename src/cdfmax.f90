@@ -175,7 +175,7 @@ PROGRAM cdfmax
   ELSE
      h = getvar1d(cf_in, cv_names(jvar), nk)
   ENDIF
-  zspval = getatt(cf_in, cv_in, cn_missing_value)
+  zspval = 0.0 ! do not use the netcdf missing value as spval set to 0.0 in get_data
 
   ! Allocate memory and define ntype : (1) = horizontal i-j slab eventually many layers.
   !                                    (2) = vertical j-k slab, at a given i
