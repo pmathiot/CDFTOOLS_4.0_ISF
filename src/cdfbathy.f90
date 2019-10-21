@@ -43,6 +43,7 @@ PROGRAM cdfbathy
   INTEGER(KIND=4)                              :: narg, iargc, ijarg  ! browse command line
   INTEGER(KIND=4)                              :: iimin, iimax        ! selected area
   INTEGER(KIND=4)                              :: ijmin, ijmax        ! selected area
+  INTEGER(KIND=4)                              :: iseed=-1, jseed=-1  ! seed index
   INTEGER(KIND=4)                              :: ierr                ! error status
   INTEGER(KIND=4)                              :: icrit               ! maximal size of pool 
   INTEGER(KIND=4)                              :: iklev               ! selected level
@@ -57,6 +58,7 @@ PROGRAM cdfbathy
   REAL(KIND=4)                                 :: e3zps_rat=0.2       ! minimum ratio e3bot/e3_0
   REAL(KIND=4)                                 :: rdepmin=600.        ! default value for depmin (full step like)
   REAL(KIND=4)                                 :: rdepfill=0.         ! default filling value
+  REAL(KIND=4)                                 :: rfillmax=HUGE(1.0), rfillmin=-HUGE(1.0), rfillval=0.0
   REAL(KIND=4)                                 :: scale_factor=1.     ! divide by scale factor when reading
   REAL(KIND=4), DIMENSION(:),      ALLOCATABLE :: e3t, e3w            ! vertical metrics
   REAL(KIND=4), DIMENSION(:),      ALLOCATABLE :: gdept, gdepw        ! depth at T and W points
@@ -81,6 +83,7 @@ PROGRAM cdfbathy
   LOGICAL :: lraz       = .FALSE., ldumpn     = .FALSE.       ! all required flags for options
   LOGICAL :: lrazb      = .FALSE., lsetb      = .FALSE.       ! all required flags for options
   LOGICAL :: lchk       = .FALSE., lfillpool  = .FALSE.       ! all required flags for options
+  LOGICAL :: lfillseed  = .FALSE., lfillbnd   = .FALSE., lfillval = .FALSE.
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
 
@@ -167,6 +170,11 @@ PROGRAM cdfbathy
      CASE ('-overwrite' ,'-o') ; loverwrite=.TRUE.
      CASE ('-fillpool','-fp' ) ; lfillpool =.TRUE. ; lmodif =.TRUE.
         ; CALL getarg(ijarg, cldum) ; ijarg = ijarg +1 ; READ(cldum,*) icrit
+     CASE ('-fillseed' ) ; CALL getarg(ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) iseed
+        ;                  CALL getarg(ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) jseed
+     CASE ('-fillbnd' )  ; CALL getarg(ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) rfillmin
+        ;                  CALL getarg(ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) rfillmax
+     CASE ('-fillval' )  ; CALL getarg(ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) rfillval
      CASE ('-replace','-r'   ) ; lreplace =.TRUE. ; lmodif =.TRUE.
         ; CALL getarg(ijarg, cf_replace) ; ijarg = ijarg +1
         ; lchk = ( lchk .OR. chkfile (cf_replace) )
@@ -244,7 +252,7 @@ PROGRAM cdfbathy
      IF (ldump     )       CALL dumpzone     (cf_dump, iimin, iimax, ijmin, ijmax)
      IF (ldumpn    )       CALL nicedumpzone (cf_dump, iimin, iimax, ijmin, ijmax)
      IF (lreplace  )       CALL replacezone  (cf_replace)
-     IF (lfillpool )       CALL fillpool  (icrit, iimin, iimax, ijmin, ijmax)
+     IF (lfillpool )       CALL fillpool  (icrit, iimin, iimax, ijmin, ijmax, iseed, jseed, rfillmin, rfillmax, rfillval)
 
      IF (lmodif ) THEN   ! save log 
         CALL prlog(bathyin, bathy, npiglo, npjglo, lappend)
@@ -562,7 +570,7 @@ PROGRAM cdfbathy
      END SUBROUTINE replacezone
 
 
-     SUBROUTINE fillpool(kcrit, kimin, kimax, kjmin, kjmax) 
+     SUBROUTINE fillpool(kcrit, kimin, kimax, kjmin, kjmax, kiseed, kjseed, rpfillmin, rpfillmax, rpfillval) 
        !!---------------------------------------------------------------------
        !!                  ***  ROUTINE replacezone  ***
        !!
@@ -571,8 +579,9 @@ PROGRAM cdfbathy
        !! ** Method  :  flood fill algorithm
        !!
        !!----------------------------------------------------------------------
-       INTEGER, INTENT(in) :: kcrit        ! maximal allowed pool 
+       INTEGER, INTENT(in) :: kcrit, kiseed, kjseed        ! maximal allowed pool 
        INTEGER(KIND=4),  INTENT(in) :: kimin, kimax, kjmin, kjmax ! position of the data windows
+       REAL(4), INTENT(in) :: rpfillmax, rpfillmin, rpfillval
 
        INTEGER :: ik                       ! number of point change
        INTEGER :: ip                       ! size of the pile
@@ -580,7 +589,7 @@ PROGRAM cdfbathy
        INTEGER :: iip1, iim1, ii, ij       ! working integer
        INTEGER, DIMENSION(:,:), ALLOCATABLE :: ipile    ! pile variable
        INTEGER, DIMENSION(:,:), ALLOCATABLE :: ioptm    ! matrix to check already tested value 
-
+       
        REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: zbathy   ! new bathymetry
        !!----------------------------------------------------------------------
        PRINT *, 'WARNING North fold case not coded'
@@ -592,6 +601,16 @@ PROGRAM cdfbathy
        WHERE (ioptm /=  0)
           ioptm = 1
        END WHERE
+
+       IF (kiseed > 0 .AND. kjseed > 0) THEN
+          ioptm = 0
+          ioptm(kiseed, kjseed) = 1
+       ELSE
+          ioptm = bathy
+          WHERE (ioptm /=  0)
+             ioptm = 1
+          END WHERE
+       END IF
 
        PRINT *, 'Filling area in progress ... (it can take a while)'    
 
@@ -612,25 +631,25 @@ PROGRAM cdfbathy
                    ii=ipile(ip,1); ij=ipile(ip,2)
 
                    ! update bathy and update pile size
-                   zbathy(ii,ij)=0.0 
+                   zbathy(ii,ij)=rpfillval 
                    ipile(ip,:)  =[0,0]; ip=ip-1
 
                    ! check neighbour cells and update pile
                    iip1=ii+1; IF ( iip1 == npiglo+1 ) iip1=2
                    iim1=ii-1; IF ( iim1 == 0        ) iim1=npiglo-1
-                   IF (zbathy(ii, ij+1) /=  0.0) THEN
+                   IF (zbathy(ii, ij+1) > rpfillmin .AND. zbathy(ii, ij+1) < rpfillmax) THEN
                       ip=ip+1; ipile(ip,:)=[ii  ,ij+1] 
                       ioptm (ii, ij+1) = 0
                    END IF
-                   IF (zbathy(ii, ij-1) /= 0.0) THEN
+                   IF (zbathy(ii, ij-1) > rpfillmin .AND. zbathy(ii, ij-1) < rpfillmax) THEN
                       ip=ip+1; ipile(ip,:)=[ii  ,ij-1]
                       ioptm(ii, ij-1) = 0
                    END IF
-                   IF (zbathy(iip1, ij) /=  0.0) THEN
+                   IF (zbathy(iip1, ij) > rpfillmin .AND. zbathy(iip1, ij) < rpfillmax) THEN
                       ip=ip+1; ipile(ip,:)=[iip1,ij  ]
                       ioptm(iip1, ij) = 0
                    END IF
-                   IF (zbathy(iim1, ij) /=  0.0) THEN
+                   IF (zbathy(iim1, ij) > rpfillmin .AND. zbathy(iim1, ij) < rpfillmax) THEN
                       ip=ip+1; ipile(ip,:)=[iim1,ij  ]
                       ioptm(iim1, ij) = 0
                    END IF
