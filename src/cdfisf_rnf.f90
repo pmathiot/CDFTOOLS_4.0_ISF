@@ -172,6 +172,10 @@ PROGRAM cdfisf_rnf
   zdrft(:,:)    = getvar(cf_isfdr, cv_isfdr, 1, npiglo, npjglo )  ! ice shelf draft
   de12t(:,:)    = getvar(cn_fhgr,  cn_ve1t,  1, npiglo, npjglo ) * getvar(cn_fhgr, cn_ve2t, 1, npiglo, npjglo )
 
+  ! initialised variable
+  zmax2d(:,:) = 0.0
+  zmin2d(:,:) = 0.0
+
   ! open isf file
   OPEN(unit=iunit, file=cf_isflist, form='formatted', status='old')
   ! get number of isf
@@ -197,8 +201,6 @@ PROGRAM cdfisf_rnf
      isfmask    (:,:) = 0
      dl_fwfisf2d(:,:) = 0.0d0
      dsumcoef         = 0.0d0
-     zmax2d(:,:)      = rdraftmax
-     zmin2d(:,:)      = rdraftmin
 
      ! only deal with current ice shelf
      WHERE (isfindex_wk /=  -ifill ) isfindex_wk = 0
@@ -230,6 +232,8 @@ PROGRAM cdfisf_rnf
                  ! runoff on nwidth points along the coast. iwscale can be adapted for
                  ! sharper (decrease) or flatter (increase) fading function. Default = 75
                  dl_fwfisf2d(ji,jj) = EXP(-((isfmask(ji,jj)-1.)/iwscale)**2)  
+                 zmax2d(ji,jj) = rdraftmax
+                 zmin2d(ji,jj) = rdraftmin
               END IF
            END DO
         END DO
