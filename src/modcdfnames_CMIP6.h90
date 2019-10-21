@@ -168,11 +168,11 @@
   INTEGER(KIND=4) :: nn_sqdvar = 4
   INTEGER(KIND=4), PRIVATE :: ji
   CHARACTER(LEN=15), DIMENSION(jp_sqdvarmax) :: cn_sqdvar = &
-      & (/'uo','vo','wo','zos',('        ', ji=jp_sqdvarmax-5,jp_sqdvarmax) /)
+      & (/'uo ','vo ','wo ','zos',('   ', ji=jp_sqdvarmax-5,jp_sqdvarmax) /)
 
   ! variables eligible for 3rd moment computation when performing cdfmoy
   INTEGER(KIND=4), PARAMETER :: jp_cubvarmax=10
   INTEGER(KIND=4) :: nn_cubvar = 2
   CHARACTER(LEN=15), DIMENSION(jp_cubvarmax) :: cn_cubvar = &
-      & (/'zos','thetao',('        ', ji=3,jp_cubvarmax) /)
+      & (/'zos   ','thetao',('      ', ji=3,jp_cubvarmax) /)
 
