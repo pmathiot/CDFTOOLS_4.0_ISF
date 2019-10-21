@@ -62,6 +62,7 @@ PROGRAM cdfpsi
   REAL(KIND=8), TARGET, DIMENSION(:,:), ALLOCATABLE :: dpsisshv ! BSF ( SSHV computation )
   REAL(KIND=8), POINTER, DIMENSION(:,:)     :: dpsi            ! point to dpsiu or dpsiv
   REAL(KIND=8), POINTER, DIMENSION(:,:)     :: dpsissh         ! point to dpsisshu or dpsisshv
+  REAL(KIND=8) :: dpsiref
 
   CHARACTER(LEN=256)                        :: cf_ufil         ! gridU netcdf file name
   CHARACTER(LEN=256)                        :: cf_vfil         ! gridV netcdf file name
@@ -417,7 +418,9 @@ PROGRAM cdfpsi
      ENDIF
 
      ! output results after normalization
-     dpsi = dpsi - dpsi(iiref,ijref)
+     dpsiref = dpsi(iiref,ijref)
+     dpsi = dpsi - dpsiref
+
      IF ( lmask ) THEN
         PRINT *,' Write masked BSF'
         ierr = putvar(ncout, id_varout(1), SNGL(dpsi)*zmask(:,:), 1, npiglo, npjglo, ktime=jt)
