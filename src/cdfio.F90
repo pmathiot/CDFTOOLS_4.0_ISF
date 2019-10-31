@@ -247,7 +247,7 @@ CONTAINS
           istatus=NF90_PUT_ATT(kcout, kidvar, 'long_name', 'Sigma bin limits')
        CASE ('unknown')
           PRINT *, 'variable unknown, no attribute available'
-          STOP 98
+          !STOP 98
        END SELECT
     ENDIF
 
@@ -1044,26 +1044,34 @@ CONTAINS
 
     INTEGER(KIND=4)    :: jvar
     INTEGER(KIND=4)    :: istatus, incid, id_var, ivar, idi, istatus0
-    CHARACTER(LEN=256) :: clongname='long_name', clongn
+    CHARACTER(LEN=256) :: clongname='long_name', clongn, clvar
     !!----------------------------------------------------------------------
+
+    IF (chkvar(cdfile, cdvar)) THEN   ! (PM) should maybe move out of getvar ???
+       PRINT *, 'Variable '//TRIM(cdvar)//' in file '//TRIM(cdfile)//' is missing'
+       STOP 98
+    END IF
+
+    clvar = findvarname(cdfile,cdvar)
+
     CALL ERR_HDL(NF90_OPEN(cdfile,NF90_NOWRITE,incid))
 
-    istatus0 = NF90_INQ_VARID ( incid,cdvar,id_var)
+    istatus0 = NF90_INQ_VARID ( incid,clvar,id_var)
     DO WHILE  ( istatus0 == NF90_ENOTVAR ) 
        ivar=getnvar(cdfile)
        PRINT *, 'Give the number corresponding to the variable you want to work with '
        DO jvar = 1, ivar
           clongn=''
-          istatus=NF90_INQUIRE_VARIABLE (incid, jvar, cdvar, ndims=idi)
+          istatus=NF90_INQUIRE_VARIABLE (incid, jvar, clvar, ndims=idi)
           istatus=NF90_GET_ATT (incid, jvar, clongname, clongn)
           IF (istatus /= NF90_NOERR ) clongn='unknown'
-          PRINT *, jvar, ' ',TRIM(cdvar),' ',TRIM(clongn)
+          PRINT *, jvar, ' ',TRIM(clvar),' ',TRIM(clongn)
        ENDDO
        READ *,id_var
-       istatus0=NF90_INQUIRE_VARIABLE (incid, id_var, cdvar, ndims=idi)
+       istatus0=NF90_INQUIRE_VARIABLE (incid, id_var, clvar, ndims=idi)
     ENDDO
     ! 
-    CALL ERR_HDL(NF90_INQUIRE_VARIABLE (incid, id_var, cdvar, ndims=idi))
+    CALL ERR_HDL(NF90_INQUIRE_VARIABLE (incid, id_var, clvar, ndims=idi))
     getvdim = idi - 1
     CALL ERR_HDL (NF90_CLOSE(incid))
 
@@ -1415,6 +1423,7 @@ CONTAINS
        PRINT *, 'File '//TRIM(cdfile)//' is missing'
        STOP 98
     END IF
+
     IF (chkvar(cdfile, cdvar)) THEN   ! (PM) should maybe move out of getvar ???
        PRINT *, 'Variable '//TRIM(cdvar)//' in file '//TRIM(cdfile)//' is missing'
        STOP 98

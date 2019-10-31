@@ -47,6 +47,7 @@ PROGRAM cdfmean
   INTEGER(KIND=4)                            :: ncout, ierr        ! for netcdf output
   INTEGER(KIND=4)                            :: idep, idep_max     ! possible depth index, maximum
   INTEGER(KIND=4), DIMENSION(:), ALLOCATABLE :: n_sum,n_sum3d      ! index of sum, sum3d in id_varout
+  INTEGER(KIND=4), DIMENSION(:), ALLOCATABLE :: n_min,n_max        ! index of min, max   in id_varout
   INTEGER(KIND=4), DIMENSION(:), ALLOCATABLE :: n_mean,n_mean3d    ! index of mean, mean3d in id_varout
   INTEGER(KIND=4), DIMENSION(:), ALLOCATABLE :: n_var,n_var3d      ! index of var, var3d in id_varout
   INTEGER(KIND=4), DIMENSION(:), ALLOCATABLE :: ipk, id_varout
@@ -66,6 +67,7 @@ PROGRAM cdfmean
   REAL(KIND=8)                               :: dsurf              ! cumulated values
   REAL(KIND=8)                               :: dvol2d,  dsum2d    !
   REAL(KIND=8)                               :: dvar2d             ! for variance computing
+  REAL(KIND=8), DIMENSION(:),    ALLOCATABLE :: dmin, dmax         !
   REAL(KIND=8), DIMENSION(:),    ALLOCATABLE :: dtim               ! time counter
   REAL(KIND=8), DIMENSION(:),    ALLOCATABLE :: dvmeanout          ! spatial mean
   REAL(KIND=8), DIMENSION(:),    ALLOCATABLE :: dvariance          ! spatial variance
@@ -107,6 +109,7 @@ PROGRAM cdfmean
   LOGICAL                                    :: lsurf     = .FALSE.! surface    flag
   LOGICAL                                    :: lvar      = .FALSE.! variance  flag
   LOGICAL                                    :: lsum      = .FALSE.! sum  flag
+  LOGICAL                                    :: lminmax   = .FALSE.! min max  flag
   LOGICAL                                    :: lzeromean = .FALSE.! zero mean  flag
   LOGICAL                                    :: lnodep    = .FALSE.! no depth flag
   LOGICAL                                    :: lchk               ! flag for missing files
@@ -145,7 +148,8 @@ PROGRAM cdfmean
      PRINT *,'              partial steps.'
      PRINT *,'       [-surf ] : compute the mean without the vertical metrics'
      PRINT *,'                   option applied only if var depth dimension (nvpk) is 1 or 0'
-     PRINT *,'       [-var ]: also compute the spatial variance of IN-var.'
+     PRINT *,'       [-var ]   : also compute the spatial variance of IN-var.'
+     PRINT *,'       [-minmax ]: also compute the min max of IN-var in the spatial window.'
      PRINT *,'       [-zeromean ] : create a file with cdfvar having a zero spatial mean.'
      PRINT *,'       [-M MSK-file VAR-mask] : Allow the use of a non standard mask file '
      PRINT *,'              with VAR-mask, instead of ',TRIM(cn_fmsk),' and the variable'
@@ -194,8 +198,8 @@ PROGRAM cdfmean
   ENDIF
 
   ! Open standard output with recl=256 to avoid wrapping of long lines (ifort)
-  OPEN(6,FORM='FORMATTED',RECL=256)  ! ifort
-  ! OPEN(6,FORM='FORMATTED')          ! gfortran
+  !OPEN(6,FORM='FORMATTED',RECL=256)  ! ifort
+  OPEN(6,FORM='FORMATTED')          ! gfortran
 
   cglobal = 'Partial step computation'
   ijarg = 1 
@@ -209,6 +213,7 @@ PROGRAM cdfmean
      CASE ('-full'     ) ; lfull     = .TRUE.  ; cglobal = 'full step computation'
      CASE ('-surf'     ) ; lsurf     = .TRUE.  
      CASE ('-var'      ) ; lvar      = .TRUE. 
+     CASE ('-minmax'   ) ; lminmax   = .TRUE. 
      CASE ('-zeromean' ) ; lzeromean = .TRUE. 
      CASE ('-vvl'      ) ; lg_vvl    = .TRUE. 
      CASE ('-w'        ) ; CALL getarg(ijarg, cldum    ) ; ijarg = ijarg + 1 ;  READ(cldum,*) iimin
@@ -253,6 +258,8 @@ PROGRAM cdfmean
   npjglo = getdim (cf_in, cn_y)
   npk    = getdim (cf_in, cn_z) 
   npt    = getdim (cf_in, cn_t)
+  !
+  cv_nam = findvarname(cf_in,cv_nam)
   nvpk   = getvdim(cf_in, cv_nam)
 
   ! save original npiglo, npiglo
@@ -285,10 +292,10 @@ PROGRAM cdfmean
   ALLOCATE ( e1   (npiglo,npjglo), e2(npiglo,npjglo), e3(npiglo,npjglo) )
   ALLOCATE ( dvariance3d(nbasin,npt), dvmeanout3d(nbasin,npt) )
   ALLOCATE ( gdep (npk), e31d(npk), dtim(npt)  )
-  ALLOCATE ( dvol(nbasin), dsum(nbasin), dvar(nbasin) )
+  ALLOCATE ( dvol(nbasin), dsum(nbasin), dvar(nbasin), dmin(nbasin), dmax(nbasin) )
   ALLOCATE ( zdep(npk_fi) )
   ALLOCATE ( n_mean(nbasin), n_mean3d(nbasin), n_var(nbasin), n_var3d(nbasin) )
-  ALLOCATE ( n_sum(nbasin), n_sum3d(nbasin) )
+  ALLOCATE ( n_sum(nbasin), n_sum3d(nbasin), n_min(nbasin), n_max(nbasin) )
 
   SELECT CASE (TRIM(ctype))
   CASE ( 'T' )
@@ -357,7 +364,9 @@ PROGRAM cdfmean
   IF ( lvar ) THEN ; nvars_bas = 4  ! space for variance too
   ELSE             ; nvars_bas = 2  ! default value
   ENDIF
-  IF ( lsum ) THEN ; nvars_bas = nvars_bas + 2  ! add sum and sum3d
+  IF ( lsum )    THEN ; nvars_bas = nvars_bas + 2  ! add sum and sum3d
+  ENDIF
+  IF ( lminmax ) THEN ; nvars_bas = nvars_bas + 2  ! add sum and sum3d
   ENDIF
   nvars = nvars_bas * nbasin
 
@@ -390,6 +399,8 @@ PROGRAM cdfmean
      dvol(:) = 0.d0
      dsum(:) = 0.d0
      dvar(:) = 0.d0
+     dmax  = -HUGE(0.d0)
+     dmin  =  HUGE(0.d0)
      DO jk = 1, nvpk
         ik = jk+ikmin-1
         ! Get velocities v at ik
@@ -406,6 +417,9 @@ PROGRAM cdfmean
         ENDIF
         DO jbasin = 1, nbasin
            ivarb = nvars_bas * (jbasin - 1)
+           !
+           dmax(jbasin) = MAX(dmax(jbasin), MAXVAL(zv, MASK=zmask * ibmask(jbasin,:,:) == 1.d0 ) )
+           dmin(jbasin) = MIN(dmin(jbasin), MINVAL(zv, MASK=zmask * ibmask(jbasin,:,:) == 1.d0 ) )
            !
            dsurf        = SUM(DBLE(          e1 * e2      * zmask * ibmask(jbasin,:,:)))
            dvol2d       = SUM(DBLE(          e1 * e2 * e3 * zmask * ibmask(jbasin,:,:)))
@@ -466,10 +480,19 @@ PROGRAM cdfmean
         ENDIF
 
         IF ( lsum ) THEN
-           WRITE(6,*) ' Sum over the ocean: ', dsum, jt
-           WRITE(numsum,*) ' Sum over the ocean:  ',TRIM(clbas),'', dsum, jt
+           WRITE(6,*) ' Sum over the ocean: ', dsum(jbasin), jt
+           WRITE(numsum,*) ' Sum over the ocean:  ',TRIM(clbas),'', dsum(jbasin), jt
            rdummy(:,:) = dsum(jbasin)
            ierr = putvar0d(ncout, id_varout(n_sum3d(jbasin)), rdummy, ktime=jt )
+        ENDIF
+
+        IF ( lminmax ) THEN
+           WRITE(6,*) ' min/max over the ocean: ', dmin(jbasin), dmax(jbasin), jt
+           WRITE(numsum,*) ' min/max over the ocean:  ',TRIM(clbas),'', dmin(jbasin), dmax(jbasin), jt
+           rdummy(:,:) = dmin(jbasin)
+           ierr = putvar0d(ncout, id_varout(n_min(jbasin)), rdummy, ktime=jt )
+           rdummy(:,:) = dmax(jbasin)
+           ierr = putvar0d(ncout, id_varout(n_max(jbasin)), rdummy, ktime=jt )
         ENDIF
      END DO ! basin loop
   END DO  ! time loop
@@ -585,6 +608,7 @@ CONTAINS
           stypvar(n_var3d(jbasin))%cshort_name    = 'var_3D_'//TRIM(clshort_name)//TRIM(cl_suffix)
           stypvar(n_var3d(jbasin))%caxis          = 'T'
        ENDIF
+
        IF ( lsum ) THEN
           ivar=ivar+1 ; n_sum(jbasin)=ivar
           ipk(n_sum(jbasin))            =  nvpk
@@ -602,6 +626,24 @@ CONTAINS
           stypvar(n_sum3d(jbasin))%cshort_name    = 'sum_3D_'//TRIM(clshort_name)//TRIM(cl_suffix)
           stypvar(n_sum3d(jbasin))%caxis          = 'T'
        ENDIF
+       IF ( lminmax ) THEN
+          ivar=ivar+1 ; n_min(jbasin)=ivar
+          ipk(n_min(jbasin))            =  1
+          stypvar(n_min(jbasin))%cunits         = TRIM(clunits)
+          stypvar(n_min(jbasin))%cname          = 'min_'//TRIM(cv_nam)//TRIM(cl_suffix)
+          stypvar(n_min(jbasin))%clong_name     = 'min_'//TRIM(cllong_name)//TRIM(cl_suffix)
+          stypvar(n_min(jbasin))%cshort_name    = 'min_'//TRIM(clshort_name)//TRIM(cl_suffix)
+          stypvar(n_min(jbasin))%caxis          = 'ZT'
+
+          ivar=ivar+1 ; n_max(jbasin)=ivar
+          ipk(n_max(jbasin))            =  1
+          stypvar(n_max(jbasin))%cunits         = TRIM(clunits)
+          stypvar(n_max(jbasin))%cname          = 'max_'//TRIM(cv_nam)//TRIM(cl_suffix)
+          stypvar(n_max(jbasin))%clong_name     = 'max_'//TRIM(cllong_name)//TRIM(cl_suffix)
+          stypvar(n_max(jbasin))%cshort_name    = 'max_'//TRIM(clshort_name)//TRIM(cl_suffix)
+          stypvar(n_max(jbasin))%caxis          = 'T'
+       ENDIF
+
     ENDDO  ! basin loop
 
     ! create output fileset
