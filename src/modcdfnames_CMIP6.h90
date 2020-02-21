@@ -88,7 +88,7 @@
   CHARACTER(LEN=256) :: cn_somxldep='mlotst'   !: Mixed layer depth (density criterium 0.03kg m-3, Eq H43 Griffies et al., 2016)
   CHARACTER(LEN=256) :: cn_somxl010='somxl010' !: Mixed layer depth (density criterium)      
   CHARACTER(LEN=256) :: cn_somxlt02='somxlt02' !: Mixed layer depth (temperature criterium)
-  CHARACTER(LEN=256) :: cn_sozotaux='tauuo'    !: Zonal wind stress
+  CHARACTER(LEN=256) :: cn_sozotaux='|tauuo|sozotaux|'   !: Zonal wind stress
 
   CHARACTER(LEN=256) :: cn_sss='|sss|sos|'         !: Sea surface salinity
   CHARACTER(LEN=256) :: cn_sst='|sst|tos|'         !: Sea surface temperature
@@ -125,10 +125,10 @@
   CHARACTER(LEN=256) :: cn_zoisoinp0='zoisoinp0' !: moc in the Indo-Pacific Net
   
   ! transport variables
-  CHARACTER(LEN=256) :: cn_vozout='uto'        !: product U x T at U point
-  CHARACTER(LEN=256) :: cn_vomevt='vto'        !: product V x T at V point
-  CHARACTER(LEN=256) :: cn_vozous='uso'        !: product U x S at U point
-  CHARACTER(LEN=256) :: cn_vomevs='vso'        !: product V x S at V point
+  CHARACTER(LEN=256) :: cn_vozout='|uto|ut|'        !: product U x T at U point
+  CHARACTER(LEN=256) :: cn_vomevt='|vto|vt|'        !: product V x T at V point
+  CHARACTER(LEN=256) :: cn_vozous='|uso|us|'        !: product U x S at U point
+  CHARACTER(LEN=256) :: cn_vomevs='|vso|vs|'        !: product V x S at V point
   CHARACTER(LEN=256) :: cn_sozout='sozout'     !: product U x T at U point
   CHARACTER(LEN=256) :: cn_somevt='somevt'     !: product V x T at V point
   CHARACTER(LEN=256) :: cn_sozous='sozous'     !: product U x S at U point
@@ -151,7 +151,7 @@
   
   ! ice variable names
   CHARACTER(LEN=256) :: cn_iicethic='iicethic' !: ice thickness
-  CHARACTER(LEN=256) :: cn_ileadfra='ileadfra' !: ice concentration
+  CHARACTER(LEN=256) :: cn_ileadfra='|ileadfra|soicecov|' !: ice concentration
   CHARACTER(LEN=256) :: cn_iicethic3='iicethic'!: ice thickness (LIM3)
   CHARACTER(LEN=256) :: cn_ileadfra3='iiceconc'!: ice concentration (LIM3)
   
