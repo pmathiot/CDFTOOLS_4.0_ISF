@@ -64,6 +64,7 @@ PROGRAM cdfisf_forcing
 
   LOGICAL                                       :: lnc4 = .FALSE.     ! flag for netcdf4 chunking and deflation
   LOGICAL                                       :: lchk = .FALSE.     ! flag for missing values
+  LOGICAL                                       :: lmask= .FALSE.     ! apply masking of closed pool
 
   !!----------------------------------------------------------------------------
   CALL ReadCdfNames()
@@ -118,7 +119,7 @@ PROGRAM cdfisf_forcing
      CASE ( '-o' ) ; CALL getarg(ijarg, cf_out     ) ; ijarg = ijarg + 1
      CASE ( '-p' ) ; CALL getarg(ijarg, cf_pat     ) ; ijarg = ijarg + 1
      CASE ( '-vp') ; CALL getarg(ijarg, cv_pat     ) ; ijarg = ijarg + 1
-     CASE ( '-m' ) ; CALL getarg(ijarg, cf_pool    ) ; ijarg = ijarg + 1
+     CASE ( '-m' ) ; CALL getarg(ijarg, cf_pool    ) ; ijarg = ijarg + 1 ; lmask= .TRUE.
      CASE ( '-vm') ; CALL getarg(ijarg, cv_pool    ) ; ijarg = ijarg + 1
      CASE ('-nc4') ; lnc4 = .TRUE.
      CASE DEFAULT  ; PRINT *,' ERROR : ', TRIM(cldum),' : unknown option.' ; STOP 99
@@ -128,7 +129,7 @@ PROGRAM cdfisf_forcing
   lchk = lchk .OR. chkfile (cf_fill   )
   lchk = lchk .OR. chkfile (cf_isflist)
   lchk = lchk .OR. chkfile (cf_pat    )
-  lchk = lchk .OR. chkfile (cf_pool   )
+  IF ( lmask ) lchk = lchk .OR. chkfile (cf_pool   )
   lchk = lchk .OR. chkfile (cn_fzgr   )
   lchk = lchk .OR. chkfile (cn_fhgr   )
   IF ( lchk  ) STOP 99 ! missing file
@@ -174,8 +175,8 @@ PROGRAM cdfisf_forcing
   ! Read the Basal melting pattern, once for all
   dl_fwfispat(:,:) = getvar(cf_pat , cv_pat, 1 ,npiglo, npjglo )
   isfindex(:,:)    = getvar(cf_fill, cv_fill,1 ,npiglo, npjglo )  
-  ipoolmsk(:,:)    = getvar(cf_pool, cv_pool,1 ,npiglo, npjglo )
-
+  IF ( lmask ) ipoolmsk(:,:)    = getvar(cf_pool, cv_pool,1 ,npiglo, npjglo )
+  PRINT *, MINVAL(isfindex), MAXVAL(isfindex)
   ! loop over all the ice shelf
   DO jisf=1,nisf
      ! initialize working pattern with the fixed one
@@ -185,7 +186,7 @@ PROGRAM cdfisf_forcing
      isfindex_wk(:,:) = isfindex(:,:)
 
      ! eliminate closed pools from isfindex, using ISF-pool file
-     isfindex_wk = isfindex_wk * ipoolmsk
+     IF ( lmask ) isfindex_wk = isfindex_wk * ipoolmsk
 
      ! read ice shelf data
      READ(iunit,*) ifill,cldum,rlon, rlat, iiseed, ijseed ,rdraftmin, rdraftmax, dfwf
@@ -206,7 +207,12 @@ PROGRAM cdfisf_forcing
      dl_fwfisf2d(1,:)=0.0d0 ; dl_fwfisf2d(npiglo,:)=0.0d0 ;
 
      dsumcoef = SUM(dl_fwfisf2d * de12t)
-     dl_fwfisf2d(:,:) = dl_fwfisf2d(:,:) / dsumcoef * dl_fwf
+     IF ( ABS(dsumcoef) > 1.e-12) THEN
+        dl_fwfisf2d(:,:) = dl_fwfisf2d(:,:) / dsumcoef * dl_fwf
+     ELSE
+        PRINT *, 'Pattern missing for ice shelf ', TRIM(cldum), -ifill
+        dl_fwfisf2d(:,:) = 0.0
+     END IF
 
      ! Value read from the text file has the wrong sign for melting.
      ! As the shelves are disjoint, cumulate is OK !

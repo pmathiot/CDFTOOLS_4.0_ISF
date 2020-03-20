@@ -53,6 +53,7 @@ PROGRAM cdfisf_fill
 
   TYPE (variable), DIMENSION(:),    ALLOCATABLE :: stypvar            ! attributes for average values
   LOGICAL                                       :: lnc4 = .FALSE.     ! flag for netcdf4 chunk and deflation
+  LOGICAL                                       :: lperio = .FALSE.   ! flag for input file periodicity
 
   !!----------------------------------------------------------------------------
   CALL ReadCdfNames()
@@ -78,6 +79,7 @@ PROGRAM cdfisf_fill
      PRINT *,'                 ...             '
      PRINT *,'                 EOF             '
      PRINT *,'                 No NAME  X    Y   I  J '
+     PRINT *,'         -ew : input file are periodic along e/w direction'
      PRINT *,'      '
      PRINT *,'     OPTIONS : '
      PRINT *,'          -nc4 : use NetCDF4 chunking and deflation for the output'
@@ -104,6 +106,7 @@ PROGRAM cdfisf_fill
   DO WHILE ( ijarg <= narg )
      CALL getarg(ijarg, cldum ) ; ijarg = ijarg + 1 
      SELECT CASE ( cldum)
+     CASE ( '-ew') ; lperio = .true.
      CASE ( '-f' ) ; CALL getarg(ijarg, cf_in      ) ; ijarg = ijarg + 1
      CASE ( '-v' ) ; CALL getarg(ijarg, cv_in      ) ; ijarg = ijarg + 1
      CASE ( '-l' ) ; CALL getarg(ijarg, cf_isflist ) ; ijarg = ijarg + 1
@@ -166,18 +169,18 @@ PROGRAM cdfisf_fill
         PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cldum)
         PRINT *,'               check separation with neighbours'
      ENDIF
-     CALL FillPool2D(iiseed, ijseed,itab, -ifill)
+     CALL FillPool2D(iiseed, ijseed,itab, -ifill, lperio)
 
      rdraftmax=MAXVAL(dtab, (itab == -ifill) )
      rdraftmin=MINVAL(dtab, (itab == -ifill) )
 
-     PRINT *,'Iceshelf : ', TRIM(cldum)
-     PRINT *,'  index  : ', ifill
-     PRINT *,'  code   : ', INT(dtab(iiseed, ijseed ) )
-     PRINT *,'  depmin : ', rdraftmin
-     PRINT *,'  depmax : ', rdraftmax
+     PRINT *,'Iceshelf   : ', TRIM(cldum)
+     PRINT *,'  index    : ', ifill
+     PRINT *,'  seed val.: ', INT(dtab(iiseed, ijseed ) )
+     PRINT *,'  depmin   : ', rdraftmin
+     PRINT *,'  depmax   : ', rdraftmax
      PRINT *,'   '
-     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1)') jisf,ADJUSTL(cldum),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax
+     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1)') ifill,ADJUSTL(cldum),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax
   END DO
   WRITE(iunitu,'(a)') 'EOF  '
   WRITE(iunitu,'(a5,a20,2a9,2a5,2a8,a)' ) 'No ','NAME                           ',' X',' Y',' I ',' J ',' Zmin',' Zmax',' FWF'

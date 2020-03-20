@@ -597,17 +597,11 @@ PROGRAM cdfbathy
        ALLOCATE(ipile(((kimax-kimin)+1)*((kjmax-kjmin)+1),2))
        ALLOCATE(zbathy(npiglo,npjglo), ioptm(npiglo,npjglo))
 
-       ioptm = bathy
-       WHERE (ioptm /=  0)
-          ioptm = 1
-       END WHERE
-
+       ioptm(:,:) = 0
        IF (kiseed > 0 .AND. kjseed > 0) THEN
-          ioptm = 0
           ioptm(kiseed, kjseed) = 1
        ELSE
-          ioptm = bathy
-          WHERE (ioptm /=  0)
+          WHERE (bathy > rpfillmin .AND. bathy < rpfillmax)
              ioptm = 1
           END WHERE
        END IF
@@ -626,7 +620,7 @@ PROGRAM cdfbathy
                 ip=1; ik=0
 
                 ! loop until the pile size is 0 or if the pool is larger than the critical size
-                DO WHILE ( ip /= 0 .AND. ik < kcrit);
+                DO WHILE ( ip /= 0 );
                    ik=ik+1 
                    ii=ipile(ip,1); ij=ipile(ip,2)
 
@@ -654,6 +648,7 @@ PROGRAM cdfbathy
                       ioptm(iim1, ij) = 0
                    END IF
                 END DO
+                PRINT *, 'kcrit = ',ik, kcrit
                 IF (ik < kcrit) bathy=zbathy;
              END IF
           END DO
