@@ -220,6 +220,11 @@ PROGRAM cdfisf_forcing
         dl_fwfisf2d(:,:) = 0.0d0
      END WHERE
 
+     ! deal case where isf duplicated in list to deals with multipart ice shelf
+     WHERE (isfindex_wk == -ifill)
+        dfwfisf2d(:,:) = 0.0d0
+     END WHERE
+
      ! set the halo to 0 (to avoid double counting)  ( E-W periodicity !)
      dl_fwfisf2d(1,:)=0.0d0 ; dl_fwfisf2d(npiglo,:)=0.0d0 ;
 
