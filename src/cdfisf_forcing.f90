@@ -66,6 +66,7 @@ PROGRAM cdfisf_forcing
   LOGICAL                                       :: lchk = .FALSE.     ! flag for missing values
   LOGICAL                                       :: lmask= .FALSE.     ! apply masking of closed pool
   LOGICAL                                       :: lfix = .FALSE.     !
+  LOGICAL                                       :: ltot = .FALSE.
 
   !!----------------------------------------------------------------------------
   CALL ReadCdfNames()
@@ -123,6 +124,7 @@ PROGRAM cdfisf_forcing
      CASE ( '-m' ) ; CALL getarg(ijarg, cf_pool    ) ; ijarg = ijarg + 1 ; lmask= .TRUE.
      CASE ( '-vm') ; CALL getarg(ijarg, cv_pool    ) ; ijarg = ijarg + 1
      CASE ( '-fx') ; lfix = .TRUE.
+     CASE ( '-st') ; ltot = .TRUE.
      CASE ('-nc4') ; lnc4 = .TRUE.
      CASE DEFAULT  ; PRINT *,' ERROR : ', TRIM(cldum),' : unknown option.' ; STOP 99
      END SELECT
@@ -241,6 +243,13 @@ PROGRAM cdfisf_forcing
      dfwfisf2d(:,:) = dfwfisf2d(:,:) + dl_fwfisf2d(:,:)
   END DO
   ! 
+  ! last line is the total expected (unsurvey ice shelf + missing small ice
+  ! shelf in the configuration
+  PRINT *, dl_fwf
+  dsumcoef = SUM(dfwfisf2d(:,:) * de12t(:,:))
+  PRINT *, dsumcoef
+  IF (ltot) dfwfisf2d(:,:) = dfwfisf2d(:,:) * dl_fwf / dsumcoef
+  ! 
   ! print isf forcing file
   ierr = putvar(ncout, id_varout(1), dfwfisf2d, 1, npiglo, npjglo)
 
@@ -304,11 +313,6 @@ CONTAINS
                 ii=ipile(ip,1); ij=ipile(ip,2)
 
                 ! update misf and update pile size
-                IF (ii==851 .AND. ij==236) THEN
-                        PRINT *, 'TOTO', mbathy(ii,ij), misf(ii,ij)
-                        PRINT *, mbathy(ii+1,ij),mbathy(ii-1,ij),mbathy(ii,ij+1),mbathy(ii,ij-1)
-                        PRINT *, misf  (ii+1,ij),misf  (ii-1,ij),misf  (ii,ij+1),misf  (ii,ij-1)
-                END IF
                 zmisf(ii,ij)=rpfillval 
                 ipile(ip,:)  =[0,0]; ip=ip-1
 
@@ -338,7 +342,7 @@ CONTAINS
                    ioptm(iim1, ij) = 0
                 END IF
              END DO
-             PRINT *, 'kcrit = ',ik, kcrit, ji, jj
+             !PRINT *, 'kcrit = ',ik, kcrit, ji, jj
              IF (ik < kcrit)   misf=zmisf
           END IF
        END DO
@@ -368,7 +372,7 @@ CONTAINS
     stypvar(1)%rmissing_value    =  -99.d0
     stypvar(1)%valid_min         =  0.d0
     stypvar(1)%valid_max         =  2000.d0
-    stypvar(1)%clong_name        = 'Ice Shelf Fresh Water Flux '
+    stypvar(1)%clong_name        = 'Ice Shelf Fresh Water Flux (> 0 = melting)'
     stypvar(1)%cshort_name       = 'sofwfisf'
     stypvar(1)%conline_operation = 'N/A'
     stypvar(1)%caxis             = 'TYX'
