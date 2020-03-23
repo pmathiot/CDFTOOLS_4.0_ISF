@@ -24,11 +24,11 @@ PROGRAM cdfisf_forcing
   !!-----------------------------------------------------------------------------
   IMPLICIT NONE
 
-  INTEGER(KIND=4)                               :: jisf               ! dummy loop counter
+  INTEGER(KIND=4)                               :: jisf, jk           ! dummy loop counter
   INTEGER(KIND=4)                               :: ierr               ! working integer
   INTEGER(KIND=4)                               :: narg, iargc, ijarg ! browsing command line
   INTEGER(KIND=4)                               :: npiglo, npjglo     ! size of the domain
-  INTEGER(KIND=4)                               :: npk,      nisf     ! size of the domain
+  INTEGER(KIND=4)                               :: npk, npkmsk,      nisf     ! size of the domain
   INTEGER(KIND=4)                               :: iunit=10           ! id file
   INTEGER(KIND=4)                               :: ncout              ! ncid of output files
   INTEGER(KIND=4)                               :: iiseed, ijseed
@@ -46,7 +46,7 @@ PROGRAM cdfisf_forcing
   REAL(KIND=8)                                  :: dl_fwf, dsumcoef
   REAL(KIND=8)                                  :: dfwf
   REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dfwfisf2d
-  REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: de12t
+  REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: de12t, misf, mbathy
   REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dl_fwfisf2d, dl_fwfispat
 
   CHARACTER(LEN=256)                            :: cf_fill            ! input file names
@@ -65,6 +65,7 @@ PROGRAM cdfisf_forcing
   LOGICAL                                       :: lnc4 = .FALSE.     ! flag for netcdf4 chunking and deflation
   LOGICAL                                       :: lchk = .FALSE.     ! flag for missing values
   LOGICAL                                       :: lmask= .FALSE.     ! apply masking of closed pool
+  LOGICAL                                       :: lfix = .FALSE.     !
 
   !!----------------------------------------------------------------------------
   CALL ReadCdfNames()
@@ -121,6 +122,7 @@ PROGRAM cdfisf_forcing
      CASE ( '-vp') ; CALL getarg(ijarg, cv_pat     ) ; ijarg = ijarg + 1
      CASE ( '-m' ) ; CALL getarg(ijarg, cf_pool    ) ; ijarg = ijarg + 1 ; lmask= .TRUE.
      CASE ( '-vm') ; CALL getarg(ijarg, cv_pool    ) ; ijarg = ijarg + 1
+     CASE ( '-fx') ; lfix = .TRUE.
      CASE ('-nc4') ; lnc4 = .TRUE.
      CASE DEFAULT  ; PRINT *,' ERROR : ', TRIM(cldum),' : unknown option.' ; STOP 99
      END SELECT
@@ -130,6 +132,7 @@ PROGRAM cdfisf_forcing
   lchk = lchk .OR. chkfile (cf_isflist)
   lchk = lchk .OR. chkfile (cf_pat    )
   IF ( lmask ) lchk = lchk .OR. chkfile (cf_pool   )
+  IF ( lfix  ) lchk = lchk .OR. chkfile (cn_fmsk   )
   lchk = lchk .OR. chkfile (cn_fzgr   )
   lchk = lchk .OR. chkfile (cn_fhgr   )
   IF ( lchk  ) STOP 99 ! missing file
@@ -142,7 +145,7 @@ PROGRAM cdfisf_forcing
   PRINT *, 'NPJGLO = ', npjglo
   PRINT *, 'NPK    = ', npk
 
-  ALLOCATE(de12t(npiglo,npjglo))
+  ALLOCATE(de12t(npiglo,npjglo), misf(npiglo,npjglo), mbathy(npiglo,npjglo))
   ALLOCATE(ipoolmsk(npiglo, npjglo), dfwfisf2d(npiglo, npjglo)    )
   ALLOCATE(dl_fwfisf2d(npiglo,npjglo), dl_fwfispat(npiglo,npjglo))
   ALLOCATE(isfindex(npiglo, npjglo), isfindex_wk(npiglo, npjglo) )
@@ -176,7 +179,21 @@ PROGRAM cdfisf_forcing
   dl_fwfispat(:,:) = getvar(cf_pat , cv_pat, 1 ,npiglo, npjglo )
   isfindex(:,:)    = getvar(cf_fill, cv_fill,1 ,npiglo, npjglo )  
   IF ( lmask ) ipoolmsk(:,:)    = getvar(cf_pool, cv_pool,1 ,npiglo, npjglo )
-  PRINT *, MINVAL(isfindex), MAXVAL(isfindex)
+
+  ! mask depression under the cavity
+  IF ( lfix ) THEN
+     npkmsk = getdim (cn_fmsk, cn_z)
+     misf   = getvar(cn_fmsk, 'misf'  ,1 ,npiglo, npjglo)
+     mbathy = getvar(cn_fmsk, 'mbathy',1 ,npiglo, npjglo)
+     DO jk=npkmsk,1,-1
+        PRINT *, 'Level : ',jk
+        CALL fillpool(25, 1, npiglo, 1, npjglo, 0, 0, 0.5, jk+0.5, 0.0)
+     END DO
+     WHERE (misf == 0.0)
+        dl_fwfispat(:,:) = 0.0
+     END WHERE
+  END IF
+
   ! loop over all the ice shelf
   DO jisf=1,nisf
      ! initialize working pattern with the fixed one
@@ -216,9 +233,9 @@ PROGRAM cdfisf_forcing
 
      ! Value read from the text file has the wrong sign for melting.
      ! As the shelves are disjoint, cumulate is OK !
-     dfwfisf2d(:,:) = dfwfisf2d(:,:) - dl_fwfisf2d(:,:)
+     dfwfisf2d(:,:) = dfwfisf2d(:,:) + dl_fwfisf2d(:,:)
   END DO
-
+  ! 
   ! print isf forcing file
   ierr = putvar(ncout, id_varout(1), dfwfisf2d, 1, npiglo, npjglo)
 
@@ -226,6 +243,106 @@ PROGRAM cdfisf_forcing
   ierr = closeout(ncout)
 
 CONTAINS
+
+  SUBROUTINE fillpool(kcrit, kimin, kimax, kjmin, kjmax, kiseed, kjseed, rpfillmin, rpfillmax, rpfillval) 
+    !!---------------------------------------------------------------------
+    !!                  ***  ROUTINE replacezone  ***
+    !!
+    !! ** Purpose :  Replace all area surrounding by mask value by mask value
+    !!
+    !! ** Method  :  flood fill algorithm
+    !!
+    !!----------------------------------------------------------------------
+    INTEGER, INTENT(in) :: kcrit, kiseed, kjseed        ! maximal allowed pool 
+    INTEGER(KIND=4),  INTENT(in) :: kimin, kimax, kjmin, kjmax ! position of the data windows
+    REAL(4), INTENT(in) :: rpfillmax, rpfillmin, rpfillval
+
+    INTEGER :: ik                       ! number of point change
+    INTEGER :: ip                       ! size of the pile
+    INTEGER :: ji, jj                   ! loop index
+    INTEGER :: iip1, iim1, ijp1, ijm1, ii, ij       ! working integer
+    INTEGER, DIMENSION(:,:), ALLOCATABLE :: ipile    ! pile variable
+    INTEGER, DIMENSION(:,:), ALLOCATABLE :: ioptm    ! matrix to check already tested value 
+    
+    REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: zmisf   ! new misfmetry
+    !!----------------------------------------------------------------------
+    PRINT *, 'WARNING North fold case not coded'
+    ! allocate variable
+    ALLOCATE(ipile(((kimax-kimin)+1)*((kjmax-kjmin)+1),2))
+    ALLOCATE(zmisf(npiglo,npjglo), ioptm(npiglo,npjglo))
+
+    ioptm(:,:) = 0
+    IF (kiseed > 0 .AND. kjseed > 0) THEN
+       ioptm(kiseed, kjseed) = 1
+    ELSE
+       WHERE (misf > rpfillmin .AND. misf < rpfillmax)
+          ioptm = 1
+       END WHERE
+    END IF
+
+    PRINT *, 'Filling area in progress ... (it can take a while)'    
+
+    DO ji=kimin,kimax
+       IF (MOD(ji,100) == 0) PRINT *, ji,'/',npiglo
+       DO jj=kjmin,kjmax
+          ! modify something only if seed point is a non 0 cell
+          IF (ioptm(ji,jj) == 1) THEN
+             ! initialise variables
+             zmisf=misf
+             ipile(:,:)=0
+             ipile(1,:)=[ji,jj]
+             ip=1; ik=0
+
+             ! loop until the pile size is 0 or if the pool is larger than the critical size
+             DO WHILE ( ip /= 0 );
+                ik=ik+1 
+                ii=ipile(ip,1); ij=ipile(ip,2)
+
+                ! update misf and update pile size
+                IF (ii==851 .AND. ij==236) THEN
+                        PRINT *, 'TOTO', mbathy(ii,ij), misf(ii,ij)
+                        PRINT *, mbathy(ii+1,ij),mbathy(ii-1,ij),mbathy(ii,ij+1),mbathy(ii,ij-1)
+                        PRINT *, misf  (ii+1,ij),misf  (ii-1,ij),misf  (ii,ij+1),misf  (ii,ij-1)
+                END IF
+                zmisf(ii,ij)=rpfillval 
+                ipile(ip,:)  =[0,0]; ip=ip-1
+
+                ! check neighbour cells and update pile
+                iip1=ii+1; IF ( iip1 == npiglo+1 ) iip1=2
+                iim1=ii-1; IF ( iim1 == 0        ) iim1=npiglo-1
+                ijp1=ij+1; IF ( ijp1 == npjglo+1 ) ijp1=npjglo
+                ijm1=ij-1; IF ( ijm1 == 0        ) ijm1=1
+                IF (       zmisf(ii, ijp1) > rpfillmin        .AND. zmisf(ii, ijp1) < rpfillmax      &
+                &    .AND.  misf(ii, ij  ) < mbathy(ii, ijp1) .AND. mbathy(ii,ij)    > misf(ii, ijp1)) THEN
+                   ip=ip+1; ipile(ip,:)=[ii  ,ijp1] 
+                   ioptm (ii, ijp1) = 0
+                END IF
+                IF (      zmisf(ii, ijm1) > rpfillmin        .AND. zmisf(ii, ijm1) < rpfillmax      &
+                &   .AND. misf(ii,ij)     < mbathy(ii, ijm1) .AND. mbathy(ii,ij)    > misf(ii, ijm1)) THEN
+                   ip=ip+1; ipile(ip,:)=[ii  ,ijm1]
+                   ioptm(ii, ijm1) = 0
+                END IF
+                IF (      zmisf(iip1, ij) > rpfillmin        .AND. zmisf(iip1, ij) < rpfillmax    &
+                &   .AND. misf(ii,ij)     < mbathy(iip1, ij) .AND. mbathy(ii,ij)   > misf(iip1,ij)) THEN
+                   ip=ip+1; ipile(ip,:)=[iip1,ij  ]
+                   ioptm(iip1, ij) = 0
+                END IF
+                IF (      zmisf(iim1, ij) > rpfillmin        .AND. zmisf(iim1, ij) < rpfillmax    &
+                &   .AND. misf(ii,ij)     < mbathy(iim1, ij) .AND. mbathy(ii,ij)   > misf(iim1,ij)) THEN
+                   ip=ip+1; ipile(ip,:)=[iim1,ij  ]
+                   ioptm(iim1, ij) = 0
+                END IF
+             END DO
+             PRINT *, 'kcrit = ',ik, kcrit, ji, jj
+             IF (ik < kcrit)   misf=zmisf
+          END IF
+       END DO
+    END DO
+
+    DEALLOCATE(ipile); DEALLOCATE(zmisf, ioptm)
+
+  END SUBROUTINE fillpool
+
 
   SUBROUTINE CreateOutput
     !!---------------------------------------------------------------------

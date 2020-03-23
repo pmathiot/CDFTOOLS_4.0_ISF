@@ -266,7 +266,7 @@ CONTAINS
 
   END SUBROUTINE shapiro_fill_smooth
 
-  SUBROUTINE FillPool2D(kiseed, kjseed, kdta, kifill)
+  SUBROUTINE FillPool2D(kiseed, kjseed, kdta, kifill, lperio)
     !!---------------------------------------------------------------------
     !!                  ***  ROUTINE FillPool2D  ***
     !!  
@@ -278,6 +278,7 @@ CONTAINS
     INTEGER(KIND=4),                 INTENT(in)    :: kiseed, kjseed
     INTEGER(KIND=4),                 INTENT(in)    :: kifill         ! pool value
     INTEGER(KIND=2), DIMENSION(:,:), INTENT(inout) :: kdta           ! mask
+    LOGICAL        ,                 INTENT(in)    :: lperio
 
     INTEGER :: ik                       ! number of point change
     INTEGER :: ip                       ! size of the pile
@@ -313,8 +314,13 @@ CONTAINS
        ipile(ip,:)  =[0,0]; ip=ip-1
 
        ! check neighbour cells and update pile ( assume E-W periodicity )
-       iip1=ii+1; IF ( iip1 == ipiglo+1 ) iip1=2
-       iim1=ii-1; IF ( iim1 == 0        ) iim1=ipiglo-1
+       IF ( lperio ) THEN
+          iip1=ii+1; IF ( iip1 == ipiglo ) iip1=2
+          iim1=ii-1; IF ( iim1 == 1      ) iim1=ipiglo-1
+       ELSE
+          iip1=ii+1; IF ( iip1 == ipiglo ) iip1=ipiglo
+          iim1=ii-1; IF ( iim1 == 1      ) iim1=1
+       END IF
 
        IF (idata(ii, ij+1) > 0 ) THEN
           ip=ip+1; ipile(ip,:)=[ii  ,ij+1]

@@ -75,6 +75,7 @@ PROGRAM cdfmkmask
   LOGICAL                                   :: lmbathy  = .FALSE.       ! mbathy flag    
   LOGICAL                                   :: l2dmask  = .FALSE.       ! 2d mask flag
   LOGICAL                                   :: lreverse = .FALSE.       ! reverse selection flag
+  LOGICAL                                   :: lperio   = .FALSE.       ! flag for input file periodicity
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
 
@@ -139,6 +140,7 @@ PROGRAM cdfmkmask
      PRINT *,'       [-time ] : If further time step is available'
      PRINT *,'                        a mask for each time step is done'
      PRINT *,'       [-r]     : reverse the final selection'
+     PRINT *,'       [-ew]    : input data with E/W periodicity (do not manage north fold)'
      PRINT *,'       [-o OUT-file ] : output file name to be used in place of standard'
      PRINT *,'                        name [ ',TRIM(cf_out),' ]'
      PRINT *,'      '
@@ -203,6 +205,8 @@ PROGRAM cdfmkmask
         ltime=.TRUE.
      CASE ( '-r'    )  !
         lreverse=.TRUE.
+     CASE ( '-ew')
+        lperio = .TRUE.
      CASE ( '-o'    )  ! change output file name
         CALL getarg (ijarg, cf_out) ; ijarg = ijarg + 1
         !
@@ -476,7 +480,7 @@ CONTAINS
              &            cd_coord=cn_fhgr, cd_point='T', cd_verbose='F')   
     ENDIF
     imask = NINT(rmask,2)
-    CALL FillPool2D(iipts, ijpts, imask, -1) ! fill pool (use -1 to flag the
+    CALL FillPool2D(iipts, ijpts, imask, -1, lperio) ! fill pool (use -1 to flag the
                                              ! area and avoid infinit loop in the algo
 
     ! keep only the point selected by the flood filling algo
