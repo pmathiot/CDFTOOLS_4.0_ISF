@@ -2,13 +2,12 @@ PROGRAM cdficb_clv
   !!======================================================================
   !!                     ***  PROGRAM  cdficb_clv  ***
   !!=====================================================================
-  !!  ** Purpose : Prepare netcdf file with Ice Shelf melting parametrized
-  !!               as runoff (spread on the vertical)
+  !!  ** Purpose : Prepare netcdf iceberg calving file
   !!
-  !!  ** Method  : 
+  !!  ** Method  : generate random disctribution along ice shelf front 
+  !!               then scale it
   !!
-  !! History : 3.0  : 04/2014  : P.Mathiot 
-  !!         : 4.0  : 03/2017  : J.M. Molines  
+  !! History : 4.0  : 04/2020  : P.Mathiot 
   !!----------------------------------------------------------------------
   !!----------------------------------------------------------------------
   USE cdfio 
@@ -39,7 +38,8 @@ PROGRAM cdficb_clv
   INTEGER(KIND=2), DIMENSION(:,:),  ALLOCATABLE :: icbindex, icbmask  ! 
   INTEGER(KIND=2), DIMENSION(:,:),  ALLOCATABLE :: icbindex_wk        !
   INTEGER(KIND=4), DIMENSION(:),    ALLOCATABLE :: iseed
-  INTEGER(KIND=4)                               :: nseed
+  INTEGER(KIND=4)                               :: nseed              ! size of seed array
+  INTEGER(KIND=4)                               :: nrand              ! seed scale factor
 
   REAL(KIND=4)                                  :: rdraftmax, rdraftmin ! dummy information in input file
   REAL(KIND=4)                                  :: rlon, rlat         ! dummy information in input file
@@ -77,7 +77,7 @@ PROGRAM cdficb_clv
 
   IF ( narg == 0 ) THEN
      PRINT *,' usage : cdficb_rnf -f ISF-fill-file -v ISF-fill_var -l ISF-listfile -w width '
-     PRINT *,'     [-b BATHY-file] [-vb BATHY-var] [-i ISFDRAFT-file] [-vi ISFDRAFT-variable]'
+     PRINT *,'     [-b BATHY-file] [-vb BATHY-var] [-i ISFDRAFT-file] [-s iseed] [-vi ISFDRAFT-variable]'
      PRINT *,'     [-nc4] [-o OUT-file ]'
      PRINT *,'      '
      PRINT *,'     PURPOSE :'
@@ -95,6 +95,8 @@ PROGRAM cdficb_clv
      PRINT *,'               will be applied.'
      PRINT *,'      '
      PRINT *,'     OPTIONS :'
+     PRINT *,'          -s nseed : seed number factor (seed = nseed * ifill) '
+     PRINT *,'                      [ default : 1 ]'
      PRINT *,'          -b BATHY-file : give name of bathy file.'
      PRINT *,'                      [ default : ',TRIM(cf_bathy),' ]'
      PRINT *,'          -vp BATHY-var : give name of bathy variable.'
@@ -103,6 +105,8 @@ PROGRAM cdficb_clv
      PRINT *,'                      [ default : ',TRIM(cf_isfdr),' ]'
      PRINT *,'          -vi ISFDRAFT-var : give name of isf_draft variable.'
      PRINT *,'                      [ default : ',TRIM(cv_isfdr),' ]'
+     PRINT *,'          -st : scale to total iceberg calving all at the end'
+     PRINT *,'                to include calving from front unresolved ice shelves'
      PRINT *,'          -nc4 : Use this option to have netcdf4 output file, with chunking'
      PRINT *,'               and deflation.'
      PRINT *,'          -o OUT-file : Specify the name of the output file instead of '
@@ -129,6 +133,7 @@ PROGRAM cdficb_clv
      CASE ('-v' ) ; CALL getarg(ijarg,cv_fill   ) ; ijarg=ijarg+1
      CASE ('-l' ) ; CALL getarg(ijarg,cf_icblist) ; ijarg=ijarg+1
      CASE ('-w' ) ; CALL getarg(ijarg,cldum     ) ; ijarg=ijarg+1 ; READ(cldum,*) nwidth
+     CASE ('-s' ) ; CALL getarg(ijarg,cldum     ) ; ijarg=ijarg+1 ; READ(cldum,*) nrand
      CASE ('-b' ) ; CALL getarg(ijarg,cf_bathy  ) ; ijarg=ijarg+1
      CASE ('-vb') ; CALL getarg(ijarg,cv_bathy  ) ; ijarg=ijarg+1
      CASE ('-i' ) ; CALL getarg(ijarg,cf_isfdr  ) ; ijarg=ijarg+1
@@ -188,13 +193,11 @@ PROGRAM cdficb_clv
   cldum='XXX'
   DO WHILE ( TRIM(cldum) /= 'EOF')
      READ(iunit,*) cldum
-     PRINT *, TRIM(cldum)
      nicb=nicb+1
   END DO
   REWIND(iunit)
   nicb = nicb - 1
 
-  PRINT *, TRIM(cf_icblist)
   PRINT *, '   Number of ISF found in file list : ', nicb
 
   CALL RANDOM_SEED(SIZE=nseed)
@@ -206,7 +209,6 @@ PROGRAM cdficb_clv
 
      ! read ice shelf data for jsf
      READ(iunit,*) ifill,cldum,rlon, rlat, iiseed, ijseed ,rdraftmin, rdraftmax, dfwf, dclv
-     PRINT *, ifill,TRIM(cldum),rlon, rlat, iiseed, ijseed ,rdraftmin, rdraftmax,dfwf, dclv
 
      icbmask  (:,:) = 0
      zicbclv2d(:,:) = 0.0d0
@@ -229,7 +231,7 @@ PROGRAM cdficb_clv
         ENDIF
      ENDDO
 
-     iseed = ifill
+     iseed = ifill * nrand
      CALL RANDOM_SEED(PUT=iseed)
      DO ji=2,npiglo-1
         DO jj = ijmin-1, ijmax+1
@@ -242,12 +244,13 @@ PROGRAM cdficb_clv
                 CALL RANDOM_NUMBER(zicbclv2d(ji,jj))
                 dsumcoef = dsumcoef + zicbclv2d(ji,jj)
                 icbmask(ji,jj) = 1
-                PRINT *, zicbclv2d(ji,jj)
            END IF
         END DO
      END DO
-     PRINT *, MINVAL(zdrft), MAXVAL(zdrft), MINVAL(bathy), MAXVAL(bathy)
-     PRINT *, SUM(zicbclv2d), dsumcoef, SUM(zicbclv2d*dclv / dsumcoef), dclv, -ifill, MINVAL(icbindex_wk), MAXVAL(icbindex_wk)
+     IF ( SUM(icbmask) == 0 .AND. ifill < 99) THEN
+        PRINT *, 'E R R O R : this ice shelf ',ifill, ' do not have sea access and so cannot calve'
+        STOP
+     END IF
 
      WHERE (icbmask >= 1)
         zicbclv2d = zicbclv2d / dsumcoef * dclv
@@ -260,13 +263,6 @@ PROGRAM cdficb_clv
   ! scale to the total ice berg calving
   IF ( ltot) dicbclv2d = dicbclv2d * dclv / SUM(dicbclv2d)     
 
-  ! convertion of Gt/y in km3/y (icb density 850 (NEMO default))
-  dicbclv2d = dicbclv2d*1.e+3/850.
-
-  ierr = putvar(ncout, id_varout(1), dicbclv2d, 1, npiglo, npjglo)
-
-  ierr = closeout(ncout)
-
   ! Diagnose total amount of fwf
   PRINT *, 'diag'
   dfwf = 0.0d0
@@ -275,7 +271,15 @@ PROGRAM cdficb_clv
         dfwf = dfwf + dicbclv2d(ji,jj)
      END DO
   END DO
-  PRINT *, 'total sum of icb = ', dfwf
+  PRINT *, 'total sum of icb (Gt/y) = ', dfwf
+
+  ! convertion of Gt/y in km3/y (icb density 850 (NEMO default))
+  dicbclv2d = dicbclv2d*1.e+3/850.
+
+  ierr = putvar(ncout, id_varout(1), dicbclv2d, 1, npiglo, npjglo)
+
+  ierr = closeout(ncout)
+
 
 CONTAINS
 
