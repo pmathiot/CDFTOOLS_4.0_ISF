@@ -165,11 +165,11 @@ PROGRAM cdfisf_fill
   DO jisf=1,nisf
      ! get iiseed, ijseed, ice shelf number ifill
      READ(iunit,*) ifill, cldum, rlon, rlat, iiseed, ijseed
-     IF (dtab(iiseed, ijseed) < 0 ) THEN
+     IF (itab(iiseed, ijseed) < 0 ) THEN
         PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cldum)
         PRINT *,'               check separation with neighbours'
      ENDIF
-     CALL FillPool2D(iiseed, ijseed,itab, -ifill, lperio)
+     CALL FillPool2D(iiseed, ijseed, itab, -ifill, lperio)
 
      rdraftmax=MAXVAL(dtab, (itab == -ifill) )
      rdraftmin=MINVAL(dtab, (itab == -ifill) )

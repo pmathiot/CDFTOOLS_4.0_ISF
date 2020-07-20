@@ -32,7 +32,7 @@ EXEC = cdfmoy cdfmoyt cdfstd  cdfmoy_weighted cdfmoy_freq cdfvT cdfuv\
        cdfprofile  cdfwhereij cdffindij cdfweight cdfmaxmoc cdfcensus cdfzoom cdfmax cdfprobe cdfinfo \
        cdf16bit cdfvita cdfconvert cdfclip  cdfbathy cdfvar \
        cdfisf_fill cdfisf_forcing cdfisf_rnf cdfisf_poolchk cdfisf_diags \
-       cdficb_clim cdficb_diags \
+       cdficb_clim cdficb_clv cdficb_diags \
        cdfcsp cdfcoloc cdfmltmask cdfstatcoord  cdfpolymask cdfsmooth cdfmkmask cdfdifmask cdfmeshmask\
        cdfgradT cdfhgradb cdfeddyscale_pass1 cdfeddyscale \
        cdfnrj_transfert cdfnrj_bci cdfnrj_bti cdfnrj_components cdfcofdis cdfnorth_unfold cdfmppini\
@@ -470,6 +470,9 @@ cdfisf_diags: cdfio.o  modutils.o cdfisf_diags.f90
 
 cdficb_clim: cdfio.o  cdficb_clim.f90
 	$(F90) cdficb_clim.f90 -o $(BINDIR)/cdficb_clim cdfio.o modcdfnames.o $(FFLAGS)
+
+cdficb_clv: cdfio.o  cdficb_clv.f90
+	$(F90) cdficb_clv.f90 -o $(BINDIR)/cdficb_clv cdfio.o modcdfnames.o $(FFLAGS)
 
 cdficb_diags: cdfio.o  cdficb_diags.f90
 	$(F90) cdficb_diags.f90 -o $(BINDIR)/cdficb_diags cdfio.o modcdfnames.o $(FFLAGS)

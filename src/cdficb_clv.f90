@@ -46,7 +46,7 @@ PROGRAM cdficb_clv
   REAL(KIND=4), DIMENSION(:,:),     ALLOCATABLE :: bathy, zdrft       ! bathymetry and ice shelf draft
   REAL(KIND=4), DIMENSION(:,:),     ALLOCATABLE :: zmax2d, zmin2d     ! output arrays
 
-  REAL(KIND=8)                                  :: dfwf, dclv
+  REAL(KIND=8)                                  :: dfwf, dclv, dclv_tot
   REAL(KIND=8)                                  :: dsumcoef
   REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: de12t
   REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: zicbclv2d
@@ -89,7 +89,7 @@ PROGRAM cdficb_clv
      PRINT *,'          -f ISF-fill_file : file built by cdffill (all the ice shelves are'
      PRINT *,'                             tagged with an id)'
      PRINT *,'          -v ISF-fill_var  : name of fill variable to use in ISF-fill_file'
-     PRINT *,'          -l ISF-list : Text file with the melting rate (GT/y) given for'
+     PRINT *,'          -l ISF-list : Text file with the calving rate (GT/y) given for'
      PRINT *,'               each ice shelf.' 
      PRINT *,'          -w width : specify the width (in grid points) on which the run-off'
      PRINT *,'               will be applied.'
@@ -113,14 +113,14 @@ PROGRAM cdficb_clv
      PRINT *,'               the default name ',TRIM(cf_out)
      PRINT *,'      '
      PRINT *,'     REQUIRED FILES :'
-     PRINT *,'       mesh_hgr.nc and all files specified on the command line' 
+     PRINT *,'       ',TRIM(cn_fhgr),' and all files specified on the command line' 
      PRINT *,'      '
      PRINT *,'     OUTPUT : '
      PRINT *,'       netcdf file : ', TRIM(cf_out) ,' unless -o option used'
-     PRINT *,'         variables : sozicbmax (m), sozicbmin(m), soicbclv (kg/m2/s)'
+     PRINT *,'         variables : soicbclv (km3/y)'
      PRINT *,'      '
      PRINT *,'     SEE ALSO :'
-     PRINT *,'       cdficb_fill, cdficb_forcing, cdficb_poolchk'
+     PRINT *,'       cdfisb_fill'
      PRINT *,'      '
      STOP 
   ENDIF
@@ -202,8 +202,8 @@ PROGRAM cdficb_clv
 
   CALL RANDOM_SEED(SIZE=nseed)
   ALLOCATE(iseed(nseed))
-
-  DO jicb=1,nicb
+  dicbclv2d = 0.0
+  DO jicb=1,nicb-1
      ! reset working icb index to its initial value
      icbindex_wk(:,:) = icbindex(:,:)
 
@@ -235,43 +235,48 @@ PROGRAM cdficb_clv
      CALL RANDOM_SEED(PUT=iseed)
      DO ji=2,npiglo-1
         DO jj = ijmin-1, ijmax+1
-           IF ( zdrft(ji,jj) == 0 .AND.  &    ! not under ice_shelf
-                &    bathy(ji,jj) /= 0 .AND.  &    ! but in the ocean
-                &    MINVAL(icbindex_wk(ji-1:ji+1 , jj-1:jj+1)) == -ifill  .AND. &  ! 
-                &    icbindex_wk(ji,jj) == 0 ) THEN
+           IF ( zdrft(ji,jj) == 0 .AND.  &                                          ! not under ice_shelf
+                &    bathy(ji,jj) /= 0 .AND.  &                                     ! but in the ocean
+                &    MINVAL(icbindex_wk(ji-1:ji+1 , jj-1:jj+1)) == -ifill  .AND. &  ! adjacent to the correct icb
+                &    icbindex_wk(ji,jj) == 0                               .AND. &  ! 
+                &    icbmask(ji,jj)     == 0       ) THEN                           ! not filled yet
                 ! case ice shelf in pultiple part in txt list
-                dicbclv2d(ji,jj) = 0.0
+                ! WHY, should not be needed dicbclv2d(ji,jj) = 0.0
                 CALL RANDOM_NUMBER(zicbclv2d(ji,jj))
                 dsumcoef = dsumcoef + zicbclv2d(ji,jj)
                 icbmask(ji,jj) = 1
            END IF
         END DO
      END DO
+
      IF ( SUM(icbmask) == 0 .AND. ifill < 99) THEN
         PRINT *, 'E R R O R : this ice shelf ',ifill, ' do not have sea access and so cannot calve'
         STOP
      END IF
 
-     WHERE (icbmask >= 1)
+     WHERE (icbmask == 1)
         zicbclv2d = zicbclv2d / dsumcoef * dclv
      END WHERE
+
+     PRINT *, TRIM(cldum),' calving is : ',SUM(zicbclv2d)
 
      dicbclv2d = dicbclv2d + zicbclv2d
 
   END DO
 
   ! scale to the total ice berg calving
-  IF ( ltot) dicbclv2d = dicbclv2d * dclv / SUM(dicbclv2d)     
+  IF ( ltot ) THEN
+     READ(iunit,*) ifill,cldum,rlon, rlat, iiseed, ijseed ,rdraftmin, rdraftmax, dfwf, dclv_tot
+     IF (ifill /= 99) THEN
+        PRINT *, 'last iceberg line must be -99 TOTA ....'
+        STOP 42
+     END IF
+     dicbclv2d = dicbclv2d * dclv_tot / SUM(dicbclv2d)     
+  END IF
 
   ! Diagnose total amount of fwf
-  PRINT *, 'diag'
-  dfwf = 0.0d0
-  DO ji=2,npiglo-1
-     DO jj=2,npjglo-1
-        dfwf = dfwf + dicbclv2d(ji,jj)
-     END DO
-  END DO
-  PRINT *, 'total sum of icb (Gt/y) = ', dfwf
+  PRINT *, 'diag : '
+  PRINT *, 'total sum of icb (Gt/y) = ', SUM(dicbclv2d(2:npiglo-1,2:npjglo-1))
 
   ! convertion of Gt/y in km3/y (icb density 850 (NEMO default))
   dicbclv2d = dicbclv2d*1.e+3/850.
@@ -279,7 +284,6 @@ PROGRAM cdficb_clv
   ierr = putvar(ncout, id_varout(1), dicbclv2d, 1, npiglo, npjglo)
 
   ierr = closeout(ncout)
-
 
 CONTAINS
 
@@ -294,17 +298,7 @@ CONTAINS
     !!----------------------------------------------------------------------
     REAL(KIND=8), DIMENSION(1) :: dl_tim
     !!----------------------------------------------------------------------
-    ! define new variables for output
-    !stypvar(1)%ichunk            = (/npiglo,MAX(1,npjglo/30),1,1 /)
-    !stypvar(1)%cname             = 'sozicbmax'
-    !stypvar(1)%rmissing_value    =  -99.
-    !stypvar(1)%valid_min         =  0.
-    !stypvar(1)%valid_max         =  2000.
-    !stypvar(1)%clong_name        = 'max depth of icb'
-    !stypvar(1)%cshort_name       = 'sozicbmax'
-    !stypvar(1)%conline_operation = 'N/A'
-    !stypvar(1)%caxis             = 'TYX'
-    !ipk(1) = 1  !  2D
+
     ! define new variables for output
     stypvar(1)%ichunk            = (/npiglo,MAX(1,npjglo/30),1,1 /)
     stypvar(1)%cname             = 'soicbclv'

@@ -413,7 +413,7 @@ CONTAINS
        IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt ',TRIM(clvdep),' in create'    ; STOP 98 ; ENDIF
     ENDIF
 
-    istatus = NF90_DEF_VAR(icout,clvtimec,NF90_DOUBLE,(/nid_t/), nid_tim)
+    istatus = NF90_DEF_VAR(icout,TRIM(clvtimec),NF90_DOUBLE,(/nid_t/), nid_tim)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR t in create'    ; STOP 98 ; ENDIF
     incid=getincid(cdfilref, clvtimec, incid_ref) ; istatus = copyatt(clvtimec, nid_tim,incid,icout)
     IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt t in create'    ; STOP 98 ; ENDIF
