@@ -40,6 +40,7 @@ PROGRAM cdfisf_fill
 
   REAL(KIND=4)                                  :: rlon, rlat         ! longitude and latitude of one point in ISF
   REAL(KIND=4)                                  :: rdraftmin, rdraftmax
+  REAL(KIND=4)                                  :: rdum
   REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dtab
 
   CHARACTER(LEN=256)                            :: cf_in              ! input file name
@@ -54,6 +55,7 @@ PROGRAM cdfisf_fill
   TYPE (variable), DIMENSION(:),    ALLOCATABLE :: stypvar            ! attributes for average values
   LOGICAL                                       :: lnc4 = .FALSE.     ! flag for netcdf4 chunk and deflation
   LOGICAL                                       :: lperio = .FALSE.   ! flag for input file periodicity
+  LOGICAL                                       :: ldiag = .FALSE.
 
   !!----------------------------------------------------------------------------
   CALL ReadCdfNames()
@@ -73,12 +75,12 @@ PROGRAM cdfisf_fill
      PRINT *,'         -v ISF-var  : variable name corresponding to the ice shelf draft or '
      PRINT *,'                      ice shelf level'
      PRINT *,'         -l ISF-list : text file containing at least the following information: '
-     PRINT *,'                 1  NAME    LON  LAT I  J '
+     PRINT *,'                 1  NAME    LON  LAT I  J DUM DUM DUM DUM ldiag'
      PRINT *,'                 ...             '
-     PRINT *,'                 i  NAMEi   LON  LAT I  J '
+     PRINT *,'                 i  NAMEi   LON  LAT I  J DUM DUM DUM DUM ldiag'
      PRINT *,'                 ...             '
      PRINT *,'                 EOF             '
-     PRINT *,'                 No NAME  X    Y   I  J '
+     PRINT *,'                 No NAME  X    Y   I  J DUM DUM DUM DUM ldiag'
      PRINT *,'         -ew : input file are periodic along e/w direction'
      PRINT *,'      '
      PRINT *,'     OPTIONS : '
@@ -164,23 +166,27 @@ PROGRAM cdfisf_fill
   ! loop over each ice shelf
   DO jisf=1,nisf
      ! get iiseed, ijseed, ice shelf number ifill
-     READ(iunit,*) ifill, cldum, rlon, rlat, iiseed, ijseed
-     IF (itab(iiseed, ijseed) < 0 ) THEN
-        PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cldum)
-        PRINT *,'               check separation with neighbours'
-     ENDIF
-     CALL FillPool2D(iiseed, ijseed, itab, -ifill, lperio)
-
-     rdraftmax=MAXVAL(dtab, (itab == -ifill) )
-     rdraftmin=MINVAL(dtab, (itab == -ifill) )
-
-     PRINT *,'Iceshelf   : ', TRIM(cldum)
-     PRINT *,'  index    : ', ifill
-     PRINT *,'  seed val.: ', INT(dtab(iiseed, ijseed ) )
-     PRINT *,'  depmin   : ', rdraftmin
-     PRINT *,'  depmax   : ', rdraftmax
-     PRINT *,'   '
-     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1)') ifill,ADJUSTL(cldum),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax
+     READ(iunit,*) ifill, cldum, rlon, rlat, iiseed, ijseed, rdum, rdum, rdum, rdum, ldiag
+     IF (ifill < 99) THEN
+        IF (itab(iiseed, ijseed) < 0 ) THEN
+           PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cldum)
+           PRINT *,'               check separation with neighbours'
+        ENDIF
+        IF (dtab(iiseed, ijseed) < 2) THEN
+           PRINT *, '  ==> ERROR: Trouble with seed for isf : ',TRIM(cldum),' id : ',ifill
+           STOP
+        END IF
+        CALL FillPool2D(iiseed, ijseed, itab, -ifill, lperio, ldiag)
+   
+        rdraftmax=MAXVAL(dtab, (itab == -ifill) )
+        rdraftmin=MINVAL(dtab, (itab == -ifill) )
+   
+        PRINT *,'Iceshelf   : ', TRIM(cldum), '  index    : ', ifill
+        PRINT *,'  depmin   : ', rdraftmin
+        PRINT *,'  depmax   : ', rdraftmax
+        PRINT *,'   '
+     END IF
+     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1,i8)') ifill,ADJUSTL(cldum),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax,rdum,rdum,ldiag
   END DO
   WRITE(iunitu,'(a)') 'EOF  '
   WRITE(iunitu,'(a5,a20,2a9,2a5,2a8,a)' ) 'No ','NAME                           ',' X',' Y',' I ',' J ',' Zmin',' Zmax',' FWF'
