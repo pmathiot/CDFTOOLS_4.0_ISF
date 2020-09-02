@@ -38,9 +38,9 @@ PROGRAM cdfbn2
   INTEGER(KIND=4), DIMENSION(1)                :: ipk, id_varout           ! level and id of output variables
 
   REAL(KIND=4)                                 :: zsps                     ! Missing value for salinity
-  REAL(KIND=4), DIMENSION (:,:,:), ALLOCATABLE :: ztemp, zsal, zwk         ! Array to read 2 layer of data
+  REAL(KIND=4), DIMENSION (:,:,:), ALLOCATABLE :: ztemp, zsal, zwk, zmask  ! Array to read 2 layer of data
   REAL(KIND=4), DIMENSION (:,:),   ALLOCATABLE :: zn2                      ! Brunt Vaissala Frequency (N2)
-  REAL(KIND=4), DIMENSION (:,:),   ALLOCATABLE :: zmask, e3w               ! mask and metric
+  REAL(KIND=4), DIMENSION (:,:),   ALLOCATABLE :: zwmask, e3w              ! mask and metric
   REAL(KIND=4), DIMENSION (:),     ALLOCATABLE :: gdep,  e3w1d             ! depth and time
 
   REAL(KIND=8), DIMENSION (:),     ALLOCATABLE :: dtim                     ! depth and time
@@ -138,7 +138,7 @@ PROGRAM cdfbn2
   PRINT *, 'npt    =', npt
 
   ALLOCATE (ztemp(npiglo,npjglo,2), zsal(npiglo,npjglo,2) )
-  ALLOCATE (zwk(npiglo,npjglo,2), zmask(npiglo,npjglo)    )
+  ALLOCATE (zwk(npiglo,npjglo,2), zwmask(npiglo,npjglo), zmask(npiglo,npjglo,2)    )
   ALLOCATE (zn2(npiglo,npjglo), e3w(npiglo,npjglo)        )
   ALLOCATE (gdep(npk), dtim(npt)                          )
   IF ( lfull ) ALLOCATE (e3w1d(npk) )
@@ -154,31 +154,35 @@ PROGRAM cdfbn2
 
   gdep(:) = getvare3(cn_fzgr, cn_gdepw, npk)
   DO jt=1,npt
+     PRINT *,jt,'/',npt
      IF ( lg_vvl ) THEN ; it=jt
      ELSE               ; it=1
      ENDIF
      !  2 levels of T and S are required : iup,idown (with respect to W level)
      !  Compute from bottom to top (for vertical integration)
      ztemp(:,:,idown) = getvar(cf_tfil, cn_votemper,  npk-1, npiglo, npjglo, ktime=jt)
-     zsal( :,:,idown) = getvar(cf_tfil, cn_vosaline,  npk-1, npiglo, npjglo, ktime=jt)
+     zsal (:,:,idown) = getvar(cf_tfil, cn_vosaline,  npk-1, npiglo, npjglo, ktime=jt)
+     zmask(:,:,idown) = getvar(cn_fmsk, cn_tmask   ,  npk-1, npiglo, npjglo )
 
      DO jk = npk-1, 2, -1 
         PRINT *,'level ',jk
-        zmask(:,:)=1.
-        ztemp(:,:,iup)= getvar(cf_tfil, cn_votemper, jk-1, npiglo, npjglo, ktime=jt)
-        zsal(:,:,iup) = getvar(cf_tfil, cn_vosaline, jk-1, npiglo, npjglo, ktime=jt)
-        WHERE(zsal(:,:,idown) == 0 ) zmask = 0
+        ztemp(:,:,iup) = getvar(cf_tfil, cn_votemper, jk-1, npiglo, npjglo, ktime=jt)
+        zsal (:,:,iup) = getvar(cf_tfil, cn_vosaline, jk-1, npiglo, npjglo, ktime=jt)
+        zmask(:,:,iup) = getvar(cn_fmsk, cn_tmask   , jk-1, npiglo, npjglo )
+
+        zwmask(:,:) = zmask(:,:,iup) * zmask(:,:,idown)
 
         IF ( lfull ) THEN ; e3w(:,:) = e3w1d(jk)
         ELSE              ; e3w(:,:) = getvar(cn_fe3w, cn_ve3w , jk, npiglo, npjglo, ktime=it, ldiom=.NOT.lg_vvl )
         ENDIF
 
-        zwk(:,:,iup) = eosbn2(ztemp, zsal, gdep(jk), e3w, npiglo, npjglo ,iup, idown)* zmask(:,:)
+        zwk(:,:,iup) = eosbn2(ztemp, zsal, gdep(jk), e3w, npiglo, npjglo ,iup, idown) * zwmask(:,:)
 
         IF ( .NOT. l_w ) THEN
            ! now put zn2 at T level (k )
-           WHERE ( zwk(:,:,idown) == 0 ) ; zn2(:,:) =  zwk(:,:,iup)
-           ELSEWHERE                     ; zn2(:,:) = 0.5 * ( zwk(:,:,iup) + zwk(:,:,idown) ) * zmask(:,:)
+           WHERE     ( zmask(:,:,idown) == 0 ) ; zn2(:,:) =  zwk(:,:,iup)
+           ELSEWHERE ( zmask(:,:,iup  ) == 0 ) ; zn2(:,:) =  zwk(:,:,idown)
+           ELSEWHERE                           ; zn2(:,:) = 0.5 * ( zwk(:,:,iup) + zwk(:,:,idown) ) * zmask(:,:,iup)
            END WHERE
         ELSE
           zn2(:,:) = zwk(:,:,iup)
