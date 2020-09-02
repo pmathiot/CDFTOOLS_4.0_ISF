@@ -480,7 +480,7 @@ CONTAINS
              &            cd_coord=cn_fhgr, cd_point='T', cd_verbose='F')   
     ENDIF
     imask = NINT(rmask,2)
-    CALL FillPool2D(iipts, ijpts, imask, -1, lperio) ! fill pool (use -1 to flag the
+    CALL FillPool2D(iipts, ijpts, imask, -1, lperio, .FALSE.) ! fill pool (use -1 to flag the
                                              ! area and avoid infinit loop in the algo
 
     ! keep only the point selected by the flood filling algo
