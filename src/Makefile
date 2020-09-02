@@ -20,7 +20,7 @@ EXEC = cdfmoy cdfmoyt cdfstd  cdfmoy_weighted cdfmoy_freq cdfvT cdfuv\
        cdfuvwt \
        cdfeke cdfrmsssh cdfstdevw cdfstdevts cdflinreg cdfimprovechk\
        cdfstats \
-       cdfbn2 cdfrichardson cdfsig0 cdfsigntr cdfsigi cdfsiginsitu cdfbottomsig cdfbotpressure cdfspice\
+       cdfbn2 cdfcheckic cdfrichardson cdfsig0 cdfsigntr cdfsigi cdfsiginsitu cdfbottomsig cdfbotpressure cdfspice\
        cdfbottom cdfets cdfokubow cdfcurl cdfdiv cdflap cdfw cdfgeo-uv cdfmxl \
        cdfrhoproj  cdfzisot cdfsigintegr cdfpvor \
        cdfmhst cdfmht_gsop cdfvhst cdfvtrp cdftransport cdfvFWov \
@@ -117,6 +117,9 @@ cdflinreg: cdfio.o  cdflinreg.f90
 	$(F90) cdflinreg.f90 -o $(BINDIR)/cdflinreg cdfio.o modcdfnames.o $(FFLAGS)
 
 ## Derived quantities programs
+cdfcheckic: cdfio.o  eos.o cdfcheckic.f90
+	$(F90)  cdfcheckic.f90 -o $(BINDIR)/cdfcheckic cdfio.o eos.o modcdfnames.o $(FFLAGS)
+
 cdfbn2: cdfio.o  eos.o  cdfbn2.f90
 	$(F90)  cdfbn2.f90 -o $(BINDIR)/cdfbn2 cdfio.o eos.o modcdfnames.o $(FFLAGS)
 
