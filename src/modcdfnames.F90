@@ -52,9 +52,8 @@ MODULE modCdfNames
   CHARACTER(LEN=256) :: cn_vff='ff'
 
   CHARACTER(LEN=256) :: cn_gdept='|gdept|deptht|gdept_1d|', cn_gdepw='|gdepw|depthw|gdepw_1d|'   !: 1d dep variable
-  CHARACTER(LEN=256) :: cn_hdept='hdept', cn_hdepw='hdepw'   !: 2d dep variable
-
-  CHARACTER(LEN=256) :: cn_depu3d='depu3d', cn_depw3d='depw3d' !: Local depth U and W in broken line extraction
+  CHARACTER(LEN=256) :: cn_hdept='hdept', cn_hdepw='hdepw'       !: 2d dep variable
+  CHARACTER(LEN=256) :: cn_gdept3d='|dept3d|', cn_gdepw3d='|depw3d|', cn_depu3d='depu3d' !: 3d dep variable
 
   CHARACTER(LEN=256) :: cn_glamt='glamt', cn_gphit='gphit'   !:  glam gphi
   CHARACTER(LEN=256) :: cn_glamu='glamu', cn_gphiu='gphiu'   !:  glam gphi
@@ -64,6 +63,7 @@ MODULE modCdfNames
   ! Mask variables
   CHARACTER(LEN=256) :: cn_tmask='tmask', cn_umask='umask'   !:  tmask, umask
   CHARACTER(LEN=256) :: cn_vmask='vmask', cn_fmask='fmask'   !:  vmask, fmask
+  CHARACTER(LEN=256) :: cn_wmask='wmask'                     !:  wmask
   CHARACTER(LEN=256) :: cn_tmaskutil='tmaskutil'             !:  tmaskutil
   CHARACTER(LEN=256) :: cn_umaskutil='umaskutil'             !:  umaskutil
   CHARACTER(LEN=256) :: cn_vmaskutil='vmaskutil'             !:  vmaskutil
