@@ -244,14 +244,13 @@ PROGRAM cdfsmooth
           cv_names(jvar) == cn_vlat2d .OR. cv_names(jvar) == 'none' ) THEN
         ! skip these variables
      ELSE
-        rspval=stypvar(jvar)%rmissing_value
         DO jt=1,npt
            DO jk=1,ipk(jvar)
               PRINT *, jt,'/',npt,' and ',jk,'/',ipk(jvar)
               ijk = iklist(jk) 
               v2d(:,:) = getvar(cf_in,cv_names(jvar),ijk,npiglo,npjglo,ktime=jt)
               iw(:,:) = 1
-              WHERE ( v2d == rspval ) iw =0
+              WHERE ( v2d == 0.0 ) iw =0
               IF ( ncut /= 0 ) CALL filter( nfilter, v2d, iw, w2d)
               IF ( ncut == 0 ) w2d = v2d
               w2d  = w2d *iw  ! mask filtered data
