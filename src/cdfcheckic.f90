@@ -16,7 +16,6 @@ PROGRAM cdfcheckic
   USE cdfio
   USE modcdfnames   ! for cdf variable names
   USE eos
-  USE OMP_LIB
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -26,14 +25,11 @@ PROGRAM cdfcheckic
   !!----------------------------------------------------------------------
   IMPLICIT NONE
 
-  INTEGER(KIND=4)                              :: threadid
   INTEGER(KIND=4)                              :: jk, jt                   ! dummy loop index
-  INTEGER(KIND=4)                              :: it                       ! time index for vvl
   INTEGER(KIND=4)                              :: jpi, jpj, jpk
   INTEGER(KIND=4)                              :: ierr                     ! working integer
   INTEGER(KIND=4)                              :: narg, iargc, ijarg       ! 
   INTEGER(KIND=4)                              :: npiglo, npjglo, npk, npt ! size of the domain
-  INTEGER(KIND=4)                              :: iup = 1, idown = 2, itmp ! for swapping the levels
   INTEGER(KIND=4)                              :: ncout                    ! ncid of output file
   INTEGER(KIND=4), DIMENSION(2)                :: ipk, id_varout           ! level and id of output variables
   INTEGER(KIND=4), DIMENSION(:,:), ALLOCATABLE :: mbkt, mikt               ! top and bottom level
@@ -101,7 +97,7 @@ PROGRAM cdfcheckic
   END DO
 
   lchk = chkfile (cn_fzgr )
-  lchk = lchk .OR. chkfile (cn_fzgr  )
+  lchk = lchk .OR. chkfile (cn_fhgr  )
   lchk = lchk .OR. chkfile (cf_tfil  )
   IF ( lchk  ) STOP 99  ! missing files 
 
@@ -134,13 +130,12 @@ PROGRAM cdfcheckic
   gdepw(:,:,:) = getvar3d(cn_fzgr, cn_depw3d, npiglo, npjglo, npk)
   gdept(:,:,:) = getvar3d(cn_fzgr, cn_dept3d, npiglo, npjglo, npk)
   tmask(:,:,:) = getvar3d(cn_fmsk, cn_tmask , npiglo, npjglo, npk)
-  wmask(:,:,:) = getvar3d(cn_fmsk, cn_tmask , npiglo, npjglo, npk)
   e3w(:,:,:)   = getvar3d(cn_fzgr, cn_ve3w  , npiglo, npjglo, npk)
   e3t(:,:,:)   = getvar3d(cn_fzgr, cn_ve3t  , npiglo, npjglo, npk)
 
   ! wmask is computed from tmask
   DO jk = 2,npk 
-     wmask(:,:,jk) = wmask(:,:,jk) * wmask(:,:,jk-1)
+     wmask(:,:,jk) = tmask(:,:,jk) * tmask(:,:,jk-1)
   END DO
 
   ! start temporal loop
@@ -232,14 +227,14 @@ CONTAINS
       REAL(4 ), DIMENSION(jpi,jpj,jpk), INTENT(inout) :: pt, ps          ! active tracers and RHS of tracer equation
       REAL(4 ), DIMENSION(jpk) :: zgdept, zgdepw
       !
-      INTEGER  ::   ji, jj, jk   ! dummy loop indices
+      INTEGER  ::   ji, jj, jk                                               ! dummy loop indices
       INTEGER  ::   jiter, iktop, ikbot, ikp, ikup, ikdown, ilayer, ik_low   ! local integers
-      INTEGER  ::   jp_tem=1, jp_sal=2
-      LOGICAL  ::   l_bottom_reached, l_column_treated
+      INTEGER  ::   jp_tem=1, jp_sal=2                                       ! temp and salinity index
+      LOGICAL  ::   l_bottom_reached, l_column_treated                       ! flag to detect if the work is done
       REAL(4 ) ::   zta, zalfa, zsum_temp, zsum_alfa, zaw, zdz, zsum_z
       REAL(4 ) ::   zsa, zbeta, zsum_sali, zsum_beta, zbw, zrw, z1_rDt
       REAL(4 ), PARAMETER ::   zn2_zero = 1.e-14                ! acceptance criteria for neutrality (N2==0)
-      REAL(4 ), PARAMETER ::   grav = 9.80665
+      REAL(4 ), PARAMETER ::   grav = 9.80665                   ! physics cst
       REAL(4 ), DIMENSION(        jpk     )   ::   zvn2         ! vertical profile of N2 at 1 given point...
       REAL(4 ), DIMENSION(        jpk, 2  )   ::   zvts, zvab   ! vertical profile of T & S , and  alpha & betaat 1 given point
       !!----------------------------------------------------------------------
