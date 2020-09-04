@@ -220,7 +220,7 @@ CONTAINS
        pdct(:,:) = 0.e0
        tmask(:,:)=getvar(cn_fmsk,cn_tmask,jk,jpi,jpj)
 
-       CALL FillPool2D_full(ksize, tmask, 1, jpi, 1, jpj, -1, -1, -0.5, 0.5, 1., lEWperio)
+       IF (lnoi) CALL FillPool2D_full(ksize, tmask, 1, jpi, 1, jpj, -1, -1, -0.5, 0.5, 1., lEWperio)
 
        PRINT *,MINVAL(tmask), MAXVAL(tmask), SUM(tmask), SIZE(tmask)
 
