@@ -27,6 +27,7 @@ MODULE modutils
   PUBLIC SetFileName
   PUBLIC GetList
   PUBLIC shapiro_fill_smooth
+  PUBLIC FillPool2D_full
   PUBLIC FillPool2D
   PUBLIC FillPool3D
   PUBLIC heading         ! compute true heading between point A and B
@@ -266,6 +267,156 @@ CONTAINS
 
   END SUBROUTINE shapiro_fill_smooth
 
+  SUBROUTINE FillPool2D_full(kcrit, rdta, kimin, kimax, kjmin, kjmax, kiseed, kjseed, rfillmin, rfillmax, rfillval, lperio)
+    !!---------------------------------------------------------------------
+    !!                  ***  ROUTINE replacezone  ***
+    !!
+    !! ** Purpose :  Replace all area surrounding by mask value by mask value
+    !!
+    !! ** Method  :  flood fill algorithm
+    !!
+    !!----------------------------------------------------------------------
+    INTEGER(4), INTENT(in) :: kiseed, kjseed                   ! seeds
+    INTEGER(4), INTENT(in) :: kimin, kimax, kjmin, kjmax       ! position of the data windows
+    INTEGER(4), INTENT(in) :: kcrit                            ! max size of the pool
+    REAL(4)   , INTENT(in) :: rfillmax, rfillmin, rfillval  ! pool def criterium
+    REAL(4)   , DIMENSION(:,:), INTENT(inout) :: rdta          ! mask
+    LOGICAL, INTENT(in)    :: lperio
+
+    INTEGER :: ik                       ! number of point change
+    INTEGER :: ip                       ! size of the pile
+    INTEGER :: ji, jj, ii, ij           ! loop index
+    INTEGER :: iip1, iim1, ijp1, ijm1   ! working integer
+    INTEGER :: imin, imax, jmin, jmax       ! position of the data windows
+    INTEGER, DIMENSION(:,:), ALLOCATABLE :: ipile    ! pile variable
+    INTEGER, DIMENSION(:,:), ALLOCATABLE :: ioptm, ifill    ! matrix to check already tested value 
+    REAL(4), DIMENSION(:,:), ALLOCATABLE :: idata    ! new data
+    INTEGER :: ipiglo, ipjglo                  ! size of the domain, infered from rdta size
+
+    
+    !!----------------------------------------------------------------------
+    !
+    ! WARNING
+    IF (lperio) PRINT *, 'W A R N I N G: north fold not treated properly ...'
+
+    ! allocate variable
+
+    ! infer domain size from input array
+    ipiglo = SIZE(rdta,1)
+    ipjglo = SIZE(rdta,2)
+
+    ! allocate variable
+    ALLOCATE(ipile(ipiglo*ipjglo,2))
+    ALLOCATE(idata(ipiglo,ipjglo))
+    ALLOCATE(ioptm(ipiglo,ipjglo),ifill(ipiglo,ipjglo))
+
+    ! define initial seeds
+    ioptm(:,:) = 0
+    WHERE ( rdta  > rfillmin .AND. rdta < rfillmax)
+      ioptm = 1
+    END WHERE
+
+    IF (kiseed > 0 .AND. kjseed > 0 ) THEN
+       imin=kiseed
+       imax=kiseed
+       jmin=kjseed
+       jmax=kjseed
+       IF (ioptm(kiseed,kjseed) == 0) THEN
+          PRINT *, 'seed not in a suitable location (ioptm(kiseed,kjseed) == 0)'
+          STOP 97
+       END IF
+    ELSEIF (kiseed < 0 .AND. kjseed < 0 ) THEN
+       imin=kimin ; jmin=kjmin
+       imax=kimax ; jmax=kjmax
+    ELSE
+       PRINT *, 'case kiseed > 0 and kjseed < 0 not treated'
+       STOP 97
+    END IF
+
+    PRINT *, 'Filling area in progress ... (it can take a while)'    
+
+    ! initialise variables
+    idata=rdta
+    ipile(:,:)=0
+
+    DO ji=imin,imax
+       IF (MOD(ji,100) == 0) PRINT *, ji,'/',imax
+       DO jj=jmin,jmax
+
+          ip=0
+
+          ! initialised pile
+          IF (ioptm(ji,jj) == 1) THEN
+             ifill(:,:) = 0
+             idata(:,:) = rdta(:,:)
+             ipile(1,:) = [ji,jj]
+             ip = 1
+          END IF
+          ik = 0
+
+          ! loop until the pile size is 0 or if the pool is larger than the critical size
+          DO WHILE ( ip /= 0 );
+             ! 
+             ! update size of the pool
+             ik = ik+1
+
+             ! next point
+             ii=ipile(ip,1); ij=ipile(ip,2)
+
+             ! update pile size
+             ipile(ip,:)  =[0,0]; ip=ip-1
+
+             ! check neighbour cells and update pile ( assume E-W periodicity )
+             IF ( lperio ) THEN
+                IF ( ii == ipiglo+1 ) ii=3
+                IF ( ii == 0        ) ii=ipiglo-2
+                iip1=ii+1; IF ( iip1 == ipiglo+1) iip1=3
+                iim1=ii-1; IF ( iim1 == 0       ) iim1=ipiglo-2
+             ELSE
+                IF ( ii == ipiglo+1 ) ii=ipiglo
+                IF ( ii == 0        ) ii=1
+                iip1=ii+1; IF ( iip1 == ipiglo+1) iip1=ipiglo
+                iim1=ii-1; IF ( iim1 == 0       ) iim1=1
+             END IF
+             ijp1=MIN(ij+1,ipjglo)  ! north fold not treated
+             ijm1=MAX(ij-1,1)
+
+             ! update ifill
+             ifill(ii,ij) = 1
+
+             ! check neighbour cells and update pile
+             IF (idata(ii, ijp1) > rfillmin .AND. idata(ii, ijp1) < rfillmax .AND. ioptm(ii, ijp1) == 1) THEN
+                ip=ip+1; ipile(ip,:)=[ii  ,ijp1]
+                ioptm (ii,ijp1) = 0
+             END IF
+             IF (idata(ii, ijm1) > rfillmin .AND. idata(ii, ijm1) < rfillmax .AND. ioptm(ii, ijm1) == 1) THEN
+                ip=ip+1; ipile(ip,:)=[ii  ,ijm1]
+                ioptm (ii,ijm1) = 0
+             END IF
+             IF (idata(iip1, ij) > rfillmin .AND. idata(iip1, ij) < rfillmax .AND. ioptm(iip1, ij) == 1) THEN
+                ip=ip+1; ipile(ip,:)=[iip1,ij  ]
+                ioptm (iip1,ij) = 0
+             END IF
+             IF (idata(iim1, ij) > rfillmin .AND. idata(iim1, ij) < rfillmax .AND. ioptm(iim1, ij) == 1) THEN
+                ip=ip+1; ipile(ip,:)=[iim1,ij  ]
+                ioptm (iim1,ij) = 0
+             END IF
+          END DO
+          !
+          ! check size to fill only small pool
+          IF ( 0 < ik .AND. ik < kcrit) THEN
+             IF (ik > 0 ) PRINT *, 'Fill area size : ',ik,' seed : ',ji, jj
+             WHERE (ifill(:,:) == 1)
+               rdta(:,:)=rfillval;
+             END WHERE
+          END IF
+       END DO
+    END DO
+
+    DEALLOCATE(ipile); DEALLOCATE(idata, ioptm)
+
+  END SUBROUTINE FillPool2D_full
+
   SUBROUTINE FillPool2D(kiseed, kjseed, kdta, kifill, lperio, ldiag)
     !!---------------------------------------------------------------------
     !!                  ***  ROUTINE FillPool2D  ***
@@ -280,15 +431,18 @@ CONTAINS
     INTEGER(KIND=2), DIMENSION(:,:), INTENT(inout) :: kdta           ! mask
     LOGICAL        ,                 INTENT(in)    :: lperio, ldiag
 
-    INTEGER :: ik                       ! number of point change
-    INTEGER :: ip                       ! size of the pile
-    INTEGER :: ji, jj                   ! loop index
-    INTEGER :: iip1, iim1, ii, ij       ! working integer
-    INTEGER :: ipiglo, ipjglo           ! size of the domain, infered from kdta size
+    INTEGER :: ik                              ! number of point change
+    INTEGER :: ip                              ! size of the pile
+    INTEGER :: ji, jj                          ! loop index
+    INTEGER :: iip1, iim1, ii, ij, ijp1, ijm1  ! working integer
+    INTEGER :: ipiglo, ipjglo                  ! size of the domain, infered from kdta size
 
     INTEGER(KIND=2), DIMENSION(:,:), ALLOCATABLE :: ipile    ! pile variable
     INTEGER(KIND=2), DIMENSION(:,:), ALLOCATABLE :: idata    ! new data
     !!----------------------------------------------------------------------
+    ! WARNING
+    IF (lperio) PRINT *, 'W A R N I N G: north fold not treated properly ...'
+
     ! infer domain size from input array
     ipiglo = SIZE(kdta,1)
     ipjglo = SIZE(kdta,2)
@@ -322,11 +476,14 @@ CONTAINS
           iim1=ii-1; IF ( iim1 == 1      ) iim1=1
        END IF
 
-       IF (idata(ii, ij+1) > 0 ) THEN
-          ip=ip+1; ipile(ip,:)=[ii  ,ij+1]
+       ijp1=MIN(ij+1,ipjglo)  ! north fold not treated
+       ijm1=MAX(ij-1,1)
+
+       IF (idata(ii, ijp1) > 0 ) THEN
+          ip=ip+1; ipile(ip,:)=[ii  ,ijp1]
        END IF
-       IF (idata(ii, ij-1) > 0 ) THEN
-          ip=ip+1; ipile(ip,:)=[ii  ,ij-1]
+       IF (idata(ii, ijm1) > 0 ) THEN
+          ip=ip+1; ipile(ip,:)=[ii  ,ijm1]
        END IF
        IF (idata(iip1, ij) > 0 ) THEN
           ip=ip+1; ipile(ip,:)=[iip1,ij  ]
@@ -336,17 +493,17 @@ CONTAINS
        END IF
 
        IF ( ldiag ) THEN
-          IF (idata(iim1, ij+1) > 0 ) THEN
-             ip=ip+1; ipile(ip,:)=[iim1,ij+1]
+          IF (idata(iim1, ijp1) > 0 ) THEN
+             ip=ip+1; ipile(ip,:)=[iim1,ijp1]
           END IF
-          IF (idata(iim1, ij-1) > 0 ) THEN
-             ip=ip+1; ipile(ip,:)=[iim1,ij-1]
+          IF (idata(iim1, ijm1) > 0 ) THEN
+             ip=ip+1; ipile(ip,:)=[iim1,ijm1]
           END IF
-          IF (idata(iip1, ij+1) > 0 ) THEN
-             ip=ip+1; ipile(ip,:)=[iip1,ij+1]
+          IF (idata(iip1, ijp1) > 0 ) THEN
+             ip=ip+1; ipile(ip,:)=[iip1,ijp1]
           END IF
-          IF (idata(iip1, ij-1) > 0 ) THEN
-             ip=ip+1; ipile(ip,:)=[iip1,ij-1]
+          IF (idata(iip1, ijm1) > 0 ) THEN
+             ip=ip+1; ipile(ip,:)=[iip1,ijm1]
           END IF
        END IF
 
@@ -356,6 +513,7 @@ CONTAINS
     DEALLOCATE(ipile); DEALLOCATE(idata)
 
   END SUBROUTINE FillPool2D
+
 
 
   SUBROUTINE FillPool3D(kiseed, kjseed, kkseed, kdta, kifill)

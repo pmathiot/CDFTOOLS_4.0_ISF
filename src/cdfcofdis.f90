@@ -21,6 +21,7 @@ PROGRAM cdfcofdis
 
   USE cdfio
   USE modcdfnames
+  USE modutils
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -34,6 +35,7 @@ PROGRAM cdfcofdis
   INTEGER(KIND=4)                           :: jpim1, jpjm1, nperio=4
   INTEGER(KIND=4)                           :: narg, iargc, ijarg
   INTEGER(KIND=4)                           :: ncout, ierr
+  INTEGER(KIND=4)                           :: ksize
   INTEGER(KIND=4), DIMENSION(1)             :: ipk, id_varout
 
   ! from phycst
@@ -58,6 +60,7 @@ PROGRAM cdfcofdis
   TYPE(variable), DIMENSION(1)              :: stypvar
 
   LOGICAL                                   :: lchk
+  LOGICAL                                   :: lnoi = .FALSE.      ! use to remove islands
   LOGICAL                                   :: lsurf = .FALSE.
   LOGICAL                                   :: lnc4  = .FALSE.     ! Use nc4 with chunking and deflation
   !!----------------------------------------------------------------------
@@ -66,7 +69,7 @@ PROGRAM cdfcofdis
   narg=iargc()
   IF ( narg == 0 ) THEN
      PRINT *,' usage :  cdfcofdis -H HGR-file -M MSK-file -T gridT.nc [-jperio jperio ]...'
-     PRINT *,'               ... [-surf] [-o OUT-file[ [-nc4] '
+     PRINT *,'               ... [-surf] [-noisland ksize] [-o OUT-file[ [-nc4] '
      PRINT *,'      '
      PRINT *,'     PURPOSE :'
      PRINT *,'        Compute the distance to the coast and create a file with the ',TRIM(cv_out)
@@ -84,6 +87,7 @@ PROGRAM cdfcofdis
      PRINT *,'       [-jperio jperio ] : define the NEMO jperio variable for north fold '
      PRINT *,'           condition. Default is  4.'
      PRINT *,'       [-surf ] : only compute  distance at the surface.'
+     PRINT *,'       [-noisland ksize] : remove island of size less than ksize before compute distance to the coast.'
      PRINT *,'       [-o OUT-file ] : specify name of the output file instead of ', TRIM(cf_out)
      PRINT *,'       [-nc4 ]     : Use netcdf4 output with chunking and deflation level 1.'
      PRINT *,'                 This option is effective only if cdftools are compiled with'
@@ -109,6 +113,7 @@ PROGRAM cdfcofdis
         ! options
      CASE ( '-jperio') ; CALL getarg(ijarg, cldum ) ; ijarg=ijarg+1 ;  READ(cldum, * ) nperio
      CASE ( '-surf'  ) ; lsurf = .TRUE.
+     CASE ( '-noisland') ; CALL getarg(ijarg, cldum ) ; ijarg=ijarg+1 ;  READ(cldum, * ) ksize; lnoi = .TRUE.
      CASE ( '-o'     ) ; CALL getarg(ijarg, cf_out) ; ijarg=ijarg+1 
      CASE ( '-nc4'   ) ; lnc4  = .TRUE.
      CASE DEFAULT      ; PRINT *,' ERROR : ', TRIM(cldum),' : unknown option.' ; STOP 99
@@ -192,6 +197,7 @@ CONTAINS
     REAL(KIND=4) ::   zdate0
     REAL(KIND=4), DIMENSION(jpi,jpj)   ::   zxt, zyt, zzt, zmask   ! cartesian coordinates for T-points
     REAL(KIND=4), DIMENSION(3*jpi*jpj) ::   zxc, zyc, zzc, zdis    ! temporary workspace
+    LOGICAL :: lEWperio = .FALSE.
     !!----------------------------------------------------------------------
 
     ! 0. Initialization
@@ -201,6 +207,9 @@ CONTAINS
     zyt(:,:) = COS( rad * gphit(:,:) ) * SIN( rad * glamt(:,:) )
     zzt(:,:) = SIN( rad * gphit(:,:) )
 
+    IF( nperio == 1 .OR. nperio == 4 .OR. nperio == 6 ) THEN
+       lEWperio = .TRUE.
+    END IF
 
     ! 1. Loop on vertical levels
     ! --------------------------
@@ -210,6 +219,11 @@ CONTAINS
        PRINT *,'WORKING for level ', jk, nperio
        pdct(:,:) = 0.e0
        tmask(:,:)=getvar(cn_fmsk,cn_tmask,jk,jpi,jpj)
+
+       CALL FillPool2D_full(ksize, tmask, 1, jpi, 1, jpj, -1, -1, -0.5, 0.5, 1., lEWperio)
+
+       PRINT *,MINVAL(tmask), MAXVAL(tmask), SUM(tmask), SIZE(tmask)
+
        DO jj = 1, jpjm1
           DO ji = 1, jpim1   ! vector loop
              umask(ji,jj) = tmask(ji,jj ) * tmask(ji+1,jj  )
@@ -330,8 +344,9 @@ CONTAINS
        ! Distance for the T-points
 
        PRINT *,' START computing distance for T points', icoast
+       !$OMP PARALLEL DO SCHEDULE(RUNTIME) DEFAULT(PRIVATE) SHARED(jpi,jpj,icoast,tmask,pdct,zxt,zyt,zzt,zxc,zyc,zzc,ra)
        DO jj = 1, jpj
-          PRINT *, jj
+          IF (MOD(jj,100)==0) PRINT *, jj,'/',jpj
           DO ji = 1, jpi
              IF( tmask(ji,jj) == 0. ) THEN
                 pdct(ji,jj) = 0.
@@ -345,9 +360,11 @@ CONTAINS
              ENDIF
           END DO
        END DO
+       !$OMP END PARALLEL DO
        PRINT *,' END computing distance for T points'
 
        ierr=putvar(ncout,id_varout(1),pdct,jk,jpi,jpj)
+       !ierr=putvar(ncout,id_varout(1),tmask,jk,jpi,jpj)
        !                                                ! ===============
     END DO                                              !   End of slab
     !                                                   ! ===============
