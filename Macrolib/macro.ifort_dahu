@@ -15,10 +15,10 @@ CMIP6 = -D key_CMIP6
  
 F90=mpiifort
 MPF90=mpiifort
-OMP=
-#OMP=-openmp
+OMP=-qopenmp
 #FFLAGS= -O  $(NCDF) $(NC4) $(CMIP6) -assume byterecl -convert big_endian -CB -fpe0 -g -traceback -ftrapuv
-FFLAGS= -O3 $(NCDF) $(NC4) $(CMIP6) -assume byterecl -convert big_endian -g -traceback
+#FFLAGS= -O  $(NCDF) $(NC4) $(CMIP6) -assume byterecl -convert big_endian -CB -g -traceback
+FFLAGS= -O3 $(OMP) $(NCDF) $(NC4) $(CMIP6) -assume byterecl -convert big_endian  
 #FFLAGS= -O  $(NCDF) $(NC4) $(CMIP6)  -assume byterecl -convert big_endian  $(OMP)
 LMPI=-lmpich
 

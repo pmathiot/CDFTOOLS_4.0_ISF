@@ -14,6 +14,7 @@ PROGRAM cdfisf_fill
   USE cdfio 
   USE modcdfnames
   USE modutils
+  USE cdftools
   !!----------------------------------------------------------------------
   !! CDFTOOLS_4.0 , MEOM 2017 
   !! $Id$
@@ -47,15 +48,18 @@ PROGRAM cdfisf_fill
   CHARACTER(LEN=256)                            :: cf_isflist         ! input file name (txt)
   CHARACTER(LEN=256)                            :: cf_isflistup       ! output file name (update of input, with draftmin/max
   CHARACTER(LEN=256)                            :: cf_out='fill.nc'   ! output file for average
+  CHARACTER(LEN=256)                            :: cf_boundary        ! boundary file
   CHARACTER(LEN=256)                            :: cv_dep             ! depth dimension name
   CHARACTER(LEN=256)                            :: cv_in              ! depth dimension name
   CHARACTER(LEN=256)                            :: cldum              ! dummy string argument
+  CHARACTER(LEN=256)                            :: cisf               ! dummy string argument
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: clv_dep            ! array of possible depth name (or 3rd dimension)
 
   TYPE (variable), DIMENSION(:),    ALLOCATABLE :: stypvar            ! attributes for average values
   LOGICAL                                       :: lnc4 = .FALSE.     ! flag for netcdf4 chunk and deflation
   LOGICAL                                       :: lperio = .FALSE.   ! flag for input file periodicity
   LOGICAL                                       :: ldiag = .FALSE.
+  LOGICAL                                       :: lboundf = .FALSE.
 
   !!----------------------------------------------------------------------------
   CALL ReadCdfNames()
@@ -70,18 +74,23 @@ PROGRAM cdfisf_fill
      PRINT *,'               edit on the ISF-file is required.'
      PRINT *,'      '
      PRINT *,'     ARGUMENTS : '
-     PRINT *,'         -f ISF-file : netcdf file  which contains the ice shelf draft variable'
+     PRINT *,'       [-f ISF-file] : netcdf file  which contains the ice shelf draft variable'
      PRINT *,'                     (mesh_zgr is OK). It is used as a mask, only.'
-     PRINT *,'         -v ISF-var  : variable name corresponding to the ice shelf draft or '
+     PRINT *,'       [-v ISF-var]  : variable name corresponding to the ice shelf draft or '
      PRINT *,'                      ice shelf level'
-     PRINT *,'         -l ISF-list : text file containing at least the following information: '
+     PRINT *,'       [-l ISF-list] : text file containing at least the following information: '
      PRINT *,'                 1  NAME    LON  LAT I  J DUM DUM DUM DUM ldiag'
      PRINT *,'                 ...             '
      PRINT *,'                 i  NAMEi   LON  LAT I  J DUM DUM DUM DUM ldiag'
      PRINT *,'                 ...             '
      PRINT *,'                 EOF             '
      PRINT *,'                 No NAME  X    Y   I  J DUM DUM DUM DUM ldiag'
-     PRINT *,'         -ew : input file are periodic along e/w direction'
+     PRINT *,'       [-bf txtfile] : txt file describing the section used in -fill'
+     PRINT *,'                        Extra boundary could be set up in boundary.txt.'
+     PRINT *,'                        Format of the file is on each line : '
+     PRINT *,'                        NAME /n iimin iimax jjmin jjmax linc.'
+     PRINT *,'                        Section is exclude from the selection if linc=F .'
+     PRINT *,'       [ -ew ]       : input file are periodic along e/w direction'
      PRINT *,'      '
      PRINT *,'     OPTIONS : '
      PRINT *,'          -nc4 : use NetCDF4 chunking and deflation for the output'
@@ -112,6 +121,7 @@ PROGRAM cdfisf_fill
      CASE ( '-f' ) ; CALL getarg(ijarg, cf_in      ) ; ijarg = ijarg + 1
      CASE ( '-v' ) ; CALL getarg(ijarg, cv_in      ) ; ijarg = ijarg + 1
      CASE ( '-l' ) ; CALL getarg(ijarg, cf_isflist ) ; ijarg = ijarg + 1
+     CASE ( '-bf') ; CALL getarg(ijarg, cf_boundary) ; ijarg = ijarg + 1; lboundf=.TRUE.
      CASE ( '-o' ) ; CALL getarg(ijarg, cf_out     ) ; ijarg = ijarg + 1
      CASE ('-nc4') ; lnc4 = .TRUE.
      CASE DEFAULT  ; PRINT *,' ERROR : ', TRIM(cldum) ,' : unknown option.'; STOP 99
@@ -153,9 +163,9 @@ PROGRAM cdfisf_fill
   OPEN(unit=iunitu, file=cf_isflistup, form='formatted'              )
   ! get total number of isf
   nisf = 0
-  cldum='XXX'
-  DO WHILE ( TRIM(cldum) /= 'EOF')
-     READ(iunit,*) cldum
+  cisf='XXX'
+  DO WHILE ( TRIM(cisf) /= 'EOF')
+     READ(iunit,*) cisf
      nisf=nisf+1
   END DO
   REWIND(iunit)
@@ -166,14 +176,15 @@ PROGRAM cdfisf_fill
   ! loop over each ice shelf
   DO jisf=1,nisf
      ! get iiseed, ijseed, ice shelf number ifill
-     READ(iunit,*) ifill, cldum, rlon, rlat, iiseed, ijseed, rdum, rdum, rdum, rdum, ldiag
+     READ(iunit,*) ifill, cisf, rlon, rlat, iiseed, ijseed, rdum, rdum, rdum, rdum, ldiag
      IF (ifill < 99) THEN
+        IF (lboundf) CALL update_mask(itab,-ifill)
         IF (itab(iiseed, ijseed) < 0 ) THEN
-           PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cldum)
+           PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cisf)
            PRINT *,'               check separation with neighbours'
         ENDIF
         IF (dtab(iiseed, ijseed) < 2) THEN
-           PRINT *, '  ==> ERROR: Trouble with seed for isf : ',TRIM(cldum),' id : ',ifill
+           PRINT *, '  ==> ERROR: Trouble with seed for isf : ',TRIM(cisf),' id : ',ifill
            STOP
         END IF
         CALL FillPool2D(iiseed, ijseed, itab, -ifill, lperio, ldiag)
@@ -181,12 +192,12 @@ PROGRAM cdfisf_fill
         rdraftmax=MAXVAL(dtab, (itab == -ifill) )
         rdraftmin=MINVAL(dtab, (itab == -ifill) )
    
-        PRINT *,'Iceshelf   : ', TRIM(cldum), '  index    : ', ifill
+        PRINT *,'Iceshelf   : ', TRIM(cisf), '  index    : ', ifill
         PRINT *,'  depmin   : ', rdraftmin
         PRINT *,'  depmax   : ', rdraftmax
         PRINT *,'   '
      END IF
-     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1,i8)') ifill,ADJUSTL(cldum),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax,rdum,rdum,ldiag
+     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1,i8)') ifill,ADJUSTL(cisf),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax,rdum,rdum,ldiag
   END DO
   WRITE(iunitu,'(a)') 'EOF  '
   WRITE(iunitu,'(a5,a20,2a9,2a5,2a8,a)' ) 'No ','NAME                           ',' X',' Y',' I ',' J ',' Zmin',' Zmax',' FWF'
@@ -241,5 +252,68 @@ CONTAINS
     ierr  = putvar1d(ncout, dl_tim, 1, 'T')
 
   END SUBROUTINE CreateOutput
+
+  SUBROUTINE update_mask(imask, kfill)
+
+    INTEGER(KIND=4), PARAMETER                   :: jseg=10000   ! dummy loop index
+    INTEGER(KIND=4)                              :: ipos           ! working integer (position of ' ' in strings)
+    INTEGER(KIND=4)                              :: ii, jk, js     ! working integer
+    INTEGER(KIND=4)                              :: iunitb=12
+    INTEGER(KIND=4)                              :: iimin, iimax, iipts      ! limit in i
+    INTEGER(KIND=4)                              :: ijmin, ijmax, ijpts      ! limit in i
+    INTEGER(KIND=4)                              :: nsec
+
+    INTEGER(KIND=4), INTENT(in) :: kfill                                          ! filling value
+    INTEGER(KIND=2), DIMENSION(:,:), INTENT(inout)  :: imask          ! mask
+    REAL(KIND=4), DIMENSION(:)  , ALLOCATABLE    :: rxx, ryy       ! working variables
+
+    CHARACTER(LEN=256)                           :: cline          ! dummy char variable
+    CHARACTER(LEN=256)                           :: csection       ! section names
+
+    LOGICAL :: lsection
+
+    ALLOCATE(rxx(npiglo+npjglo), ryy(npiglo+npjglo)) ! dimension specified in broken_line
+    ! optimal dimension could be ABS(imax-imin +1) + ABS(jmax-jmin+1) - 1
+
+    IF (lboundf) THEN
+       PRINT *,''
+       PRINT *,'Boundary file: ',TRIM(cf_boundary),' is used to close the basin'
+       PRINT *,''
+
+       IF ( chkfile(cf_boundary) ) STOP 99 ! missing file
+
+       OPEN(iunitb, FILE=cf_boundary)
+       lsection = .TRUE.
+       DO WHILE (lsection)
+          rxx(:)=1; ryy(:)=1
+
+          ! read section name
+          READ(iunitb,'(a)') csection
+          IF (TRIM(csection) == 'EOF' ) THEN
+             lsection = .FALSE.
+          ELSEIF (TRIM(csection) == TRIM(cisf) ) THEN
+             ! read section coordinates
+             READ(iunitb,*) nsec
+             DO js = 1,nsec
+                READ(iunitb,*) iimin, iimax, ijmin, ijmax
+
+                ! get index of cell included into the section
+                CALL broken_line(iimin, iimax, ijmin, ijmax, rxx, ryy, npt, npiglo, npjglo)
+ 
+                ! mask boundary and keep location in rmskline
+                DO jk=1,npt
+                   imask(rxx(jk),ryy(jk))=kfill*imask(rxx(jk),ryy(jk))
+                END DO
+             END DO
+          ENDIF
+       END DO
+       CLOSE(iunitb)
+    ELSE
+       PRINT *,''
+       PRINT *, 'NO BOUNDARIES ARE ADDED TO THE INPUT FILE TO CLOSE THE BASIN'
+       PRINT *,''
+    END IF
+
+  END SUBROUTINE update_mask
 
 END PROGRAM cdfisf_fill

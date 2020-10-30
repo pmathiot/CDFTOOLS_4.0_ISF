@@ -456,8 +456,8 @@ cdfnorth_unfold: cdfio.o cdfnorth_unfold.f90
 cdfpolymask: cdfio.o modpoly.o cdfpolymask.f90
 	$(F90)   cdfpolymask.f90  -o $(BINDIR)/cdfpolymask cdfio.o modpoly.o modcdfnames.o $(FFLAGS)
 
-cdfisf_fill: cdfio.o  modutils.o cdfisf_fill.f90
-	$(F90)   cdfisf_fill.f90  -o $(BINDIR)/cdfisf_fill cdfio.o modutils.o modcdfnames.o $(FFLAGS)
+cdfisf_fill: cdfio.o  modutils.o cdftools.o cdfisf_fill.f90
+	$(F90)   cdfisf_fill.f90  -o $(BINDIR)/cdfisf_fill cdftools.o cdfio.o modutils.o modcdfnames.o $(FFLAGS)
 
 cdfisf_forcing: cdfio.o  cdfisf_forcing.f90
 	$(F90)   cdfisf_forcing.f90  -o $(BINDIR)/cdfisf_forcing cdfio.o modcdfnames.o $(FFLAGS)
