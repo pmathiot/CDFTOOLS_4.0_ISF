@@ -153,7 +153,7 @@ PROGRAM cdfisf_diags
   e2(:,:) = getvar  (cn_fhgr, cn_ve2t, 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
 
   ! open text file for isf
-  OPEN(unit=iunit, file='maskisf.txt', form='formatted', status='old')
+  OPEN(unit=iunit, file=cf_isflst, form='formatted', status='old')
 
   ! get number of isf
   nisf = 0
@@ -194,6 +194,8 @@ PROGRAM cdfisf_diags
         WHERE (zmaskisf == -id_isf)
            mask(:,:) = zmask
         END WHERE
+
+        IF ( id_isf == 99 ) mask(:,:) = zmask(:,:)
 
         ! compute total melt for each ice shelf
         rdummy = SUM(DBLE(zmlt * e1 * e2 * mask)) *86400.d0 * 365.d0 / 1.e12
