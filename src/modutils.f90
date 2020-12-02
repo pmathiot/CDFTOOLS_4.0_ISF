@@ -469,13 +469,16 @@ CONTAINS
 
        ! check neighbour cells and update pile ( assume E-W periodicity )
        IF ( lperio ) THEN
-          iip1=ii+1; IF ( iip1 == ipiglo ) iip1=2
-          iim1=ii-1; IF ( iim1 == 1      ) iim1=ipiglo-1
+          IF ( ii == ipiglo+1 ) ii=3
+          IF ( ii == 0        ) ii=ipiglo-2
+          iip1=ii+1; IF ( iip1 == ipiglo+1) iip1=3
+          iim1=ii-1; IF ( iim1 == 0       ) iim1=ipiglo-2
        ELSE
-          iip1=ii+1; IF ( iip1 == ipiglo ) iip1=ipiglo
-          iim1=ii-1; IF ( iim1 == 1      ) iim1=1
+          IF ( ii == ipiglo+1 ) ii=ipiglo
+          IF ( ii == 0        ) ii=1
+          iip1=ii+1; IF ( iip1 == ipiglo+1) iip1=ipiglo
+          iim1=ii-1; IF ( iim1 == 0       ) iim1=1
        END IF
-
        ijp1=MIN(ij+1,ipjglo)  ! north fold not treated
        ijm1=MAX(ij-1,1)
 
@@ -564,12 +567,19 @@ CONTAINS
        ipile(ip,:)  =[0,0,0]; ip=ip-1
 
        ! check neighbour cells and update pile ( assume E-W periodicity )
-       iip1=ii+1; IF ( iip1 == ipiglo+1 ) iip1=2
-       iim1=ii-1; IF ( iim1 == 0        ) iim1=ipiglo-1
-       ijp1=ij+1 ; ijm1 =ij-1
-       ikp1=ik+1 ; IF (ikp1 == ipk+1 ) ikp1=ik
-       ikm1=ik-1 ; IF (ikm1 == 0     ) ikm1=ik
-
+       IF ( lperio ) THEN
+          IF ( ii == ipiglo+1 ) ii=3
+          IF ( ii == 0        ) ii=ipiglo-2
+          iip1=ii+1; IF ( iip1 == ipiglo+1) iip1=3
+          iim1=ii-1; IF ( iim1 == 0       ) iim1=ipiglo-2
+       ELSE
+          IF ( ii == ipiglo+1 ) ii=ipiglo
+          IF ( ii == 0        ) ii=1
+          iip1=ii+1; IF ( iip1 == ipiglo+1) iip1=ipiglo
+          iim1=ii-1; IF ( iim1 == 0       ) iim1=1
+       END IF
+       ijp1=MIN(ij+1,ipjglo)  ! north fold not treated
+       ijm1=MAX(ij-1,1)
 
        IF (idata(ii, ijp1,ik) > 0 ) THEN
           ip=ip+1; ipile(ip,:)=[ii  ,ijp1,ik]
