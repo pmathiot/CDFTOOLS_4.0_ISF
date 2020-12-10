@@ -58,7 +58,7 @@ PROGRAM cdfmkmask
   CHARACTER(LEN=256)                        :: cf_out = 'mask_sal.nc'   ! output file
   CHARACTER(LEN=256)                        :: cf_boundary = 'boundary.txt' ! default boundary input file
   CHARACTER(LEN=256)                        :: cv_mask                  ! variable name
-  CHARACTER(LEN=256)                        :: cv_dep                   ! variable name
+  CHARACTER(LEN=256)                        :: cv_dep , cv_var          ! variable name
   CHARACTER(LEN=256)                        :: cldum                    ! dummy string
 
   TYPE (variable), DIMENSION(4)             :: stypvar                  ! output attribute
@@ -81,7 +81,8 @@ PROGRAM cdfmkmask
 
   narg = iargc()
   IF ( narg == 0 ) THEN
-     PRINT *,' usage : cdfmkmask -f T-file [-zoom lonmin lonmax latmin latmax] ...'
+     PRINT *,' usage : cdfmkmask -f msk-file -v msk_var'
+     PRINT *,'                   ... [-zoom lonmin lonmax latmin latmax] ...'
      PRINT *,'                   ... [-zoomij iimin iimax ijmin ijmax] ...'
      PRINT *,'                   ... [-zoombat bathymin bathymax]  ...'
      PRINT *,'                   ... [-zoomvar varname varmin varmax]  ...'
@@ -116,11 +117,7 @@ PROGRAM cdfmkmask
      PRINT *,'       [-zoomij iimin iimax ijmin ijmax] : model grid windows used to'
      PRINT *,'                        limit the area where the mask is builded. Outside'
      PRINT *,'                        this area, the mask is set to 0.'
-     PRINT *,'       [-zoombat bathymin bathymax] : depth windows used to'
-     PRINT *,'                        limit the area where the mask is builded. Outside'
-     PRINT *,'                        this area, the mask is set to 0.' 
-     PRINT *,'                        Need mesh_zgr.nc'
-     PRINT *,'       [-zoomvar varname varmin varmax] : range of varname variable used to'
+     PRINT *,'       [-zoomvar varmin varmax] : range of varname variable used to'
      PRINT *,'                        limit the area where the mask is builded. Outside'
      PRINT *,'                        this area, the mask is set to 0.'
      PRINT *,'       [-fill iipoint jjpoint] : mask everything except the cells into the'
@@ -163,6 +160,8 @@ PROGRAM cdfmkmask
      CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1
      SELECT CASE ( cldum )
      CASE ( '-f'    ) ; CALL getarg (ijarg, cf_tfil) ; ijarg = ijarg + 1
+     CASE ( '-v'    ) ; CALL getarg (ijarg, cv_mask) ; ijarg = ijarg + 1
+     CASE ( '-2d'   ) ; l2dmask=.TRUE.
      CASE ( '-zoom' )  ! read a zoom lat/lon area
         lzoom = .TRUE.
         CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) rlonmin
@@ -177,16 +176,12 @@ PROGRAM cdfmkmask
         CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) ijmin
         CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) ijmax
         !
-     CASE ( '-zoombat' )  ! read a zoom bathy area 
-        lzoombat = .TRUE.
-        CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) rbatmin
-        CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) rbatmax
-        !
      CASE ( '-zoomvar' ) ! read a zoom variable area
         lzoomvar = .TRUE.
-        CALL getarg (ijarg, cv_mask) ; ijarg = ijarg + 1 ;
+        CALL getarg (ijarg, cv_var)  ; ijarg = ijarg + 1
         CALL getarg (ijarg, cldum)   ; ijarg = ijarg + 1 ; READ(cldum,*) rvarmin 
         CALL getarg (ijarg, cldum)   ; ijarg = ijarg + 1 ; READ(cldum,*) rvarmax 
+        !
      CASE ( '-fill' )  ! read a seed point and a boundary file
         lfill = .true.
         CALL getarg (ijarg, cldum) ; ijarg = ijarg + 1 ; READ(cldum,*) iipts
@@ -223,34 +218,11 @@ PROGRAM cdfmkmask
 
   IF ( lzoom .AND. lzoomij ) PRINT *, 'WARNING 2 spatial condition for mask'
 
-  IF (.NOT. lzoomvar) cv_mask = cn_vosaline
-  IF (TRIM(cf_tfil)=='-maskfile') THEN
-     cv_mask = cn_tmask
-     cf_tfil = cn_fmsk
-  END IF
-
-  IF (TRIM(cf_tfil)=='-2dmaskfile') THEN
-     cv_mask = 'tmaskutil'
-     cf_tfil = cn_fmsk
-     l2dmask=.TRUE.
-  END IF
-
-  IF (TRIM(cf_tfil)=='-mbathy') THEN
-     cv_mask = cn_mbathy
-     cv_dep  = 'nav_lev'
-     cf_tfil = 'bathylevel.nc'
-     lmbathy = .TRUE.
-     IF ( chkfile(cn_fzgr) ) STOP 99 ! missing file
-  END IF
-
   IF ( chkfile(cf_tfil) ) STOP 99 ! missing file
 
   npiglo = getdim (cf_tfil,cn_x)
   npjglo = getdim (cf_tfil,cn_y)
-  IF ( lmbathy ) THEN
-     npk  = getdim (cn_fzgr,cn_z)
-     ALLOCATE ( rdep(npk) )
-  ELSE IF ( l2dmask ) THEN
+  IF ( l2dmask ) THEN
      PRINT *,' npk is forced to 1'
      npk  = 0
   ELSE
@@ -285,22 +257,6 @@ PROGRAM cdfmkmask
   !! Allocate only usefull variable and read only usefull variable
   ALLOCATE (tmask(npiglo,npjglo), zmask(npiglo,npjglo), ssmask(npiglo,npjglo), tmask_bck(npiglo,npjglo))
   ssmask(:,:) = 1.
-
-  !! apply constraint constant over time and depth
-  !! mbathy constrain
-  IF ( lmbathy ) THEN
-      ALLOCATE (mbathy(npiglo,npjglo))
-      mbathy(:,:) = getvar(cf_tfil, cv_mask, 1, npiglo, npjglo)
-      WHERE (mbathy < jk ) ssmask = 0.
-  ENDIF
-
-  !! bathy constraint
-  IF ( lzoombat ) THEN
-     IF ( chkfile(cn_fzgr) ) STOP 99 ! missing file
-     ALLOCATE ( rbat  (npiglo,npjglo) )
-     rbat(:,:)= getvar(cn_fbathymet, cn_bathymet,  1 ,npiglo, npjglo)
-     WHERE (rbat < rbatmin .OR. rbat > rbatmax) ssmask = 0
-  ENDIF
 
   !! lat/lon constrain
   IF ( lzoom ) THEN
@@ -338,13 +294,11 @@ PROGRAM cdfmkmask
 
         !! variable constrain
         IF ( lzoomvar ) THEN
+           tmask(:,:) = getvar(cf_tfil, cv_var,  jk, npiglo, npjglo, ktime=jt)
            zmask=tmask
            WHERE ((tmask >= rvarmin) .AND. (tmask <= rvarmax)) zmask = 1
            WHERE ((tmask <  rvarmin) .OR.  (tmask >  rvarmax)) zmask = 0
-           tmask=zmask
-        ELSE
-           WHERE (tmask > 0 ) tmask = 1
-           WHERE (tmask <=0 ) tmask = 0
+           tmask=tmask_bck*zmask
         ENDIF
 
         !! fill constrain
@@ -358,10 +312,11 @@ PROGRAM cdfmkmask
         IF ( lreverse ) THEN
            tmask = -1 * tmask
            WHERE (tmask == 0 ) 
-              tmask = tmask_bck
+              tmask = 1
            ELSE WHERE
               tmask = 0
            END WHERE
+           tmask = tmask * tmask_bck(:,:)
         END IF
  
         !! write t- u- v- mask

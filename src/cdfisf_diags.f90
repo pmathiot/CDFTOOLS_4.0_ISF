@@ -19,7 +19,7 @@ PROGRAM cdfisf_diags
   !!----------------------------------------------------------------------
   IMPLICIT NONE
 
-  INTEGER(KIND=4)                           :: jt, jisf            ! dummy loop index
+  INTEGER(KIND=4)                           :: jt, jisf, ijarg     ! dummy loop index
   INTEGER(KIND=4)                           :: iimin=0, iimax=0    ! domain limitation for computation
   INTEGER(KIND=4)                           :: ijmin=0, ijmax=0    ! domain limitation for computation
   INTEGER(KIND=4)                           :: ikmin=0, ikmax=0    ! domain limitation for computation
@@ -62,7 +62,7 @@ PROGRAM cdfisf_diags
 
   narg= iargc()
   IF ( narg == 0 ) THEN
-     PRINT *,' usage : cdfisf_diags IN-file IN-var ISF-fill_file ISF-fill_var ISF-list [imin imax jmin jmax kmin kmax] '
+     PRINT *,' usage : cdfisf_diags -f IN-file -v IN-var -mskf ISF-fill_file -mskv ISF-fill_var -l ISF-list [ -w imin imax jmin jmax kmin kmax] [-o out.nc]'
      PRINT *,'      '
      PRINT *,'     PURPOSE :'
      PRINT *,'       Computes the integrated ice shelf melting for all ice shelf'
@@ -80,10 +80,11 @@ PROGRAM cdfisf_diags
      PRINT *,'                  (id in the list must match the list in ISF-fill_file)'
      PRINT *,'      '
      PRINT *,'     OPTIONS :'
-     PRINT *,'       [imin imax jmin jmax kmin kmax] : limit of the sub area to work with.' 
+     PRINT *,'       [ -w imin imax jmin jmax kmin kmax] : limit of the sub area to work with.' 
      PRINT *,'              if imin=0 all i are taken'
      PRINT *,'              if jmin=0 all j are taken'
      PRINT *,'              if kmin=0 all k are taken'
+     PRINT *,'       [ -o out.nc ] : output file name' 
      PRINT *,'      '
      PRINT *,'     REQUIRED FILES :'
      PRINT *,'      ', TRIM(cn_fhgr),', ',TRIM(cn_fzgr),' and ',TRIM(cn_fmsk),' maskisf.nc maskisf.txt'
@@ -99,25 +100,27 @@ PROGRAM cdfisf_diags
      STOP
   ENDIF
 
-  ! get argument
-  CALL getarg (1, cf_in)
-  CALL getarg (2, cv_in)
-  CALL getarg (3, cf_isfmsk)
-  CALL getarg (4, cv_isfmsk)
-  CALL getarg (5, cf_isflst)
+  ijarg = 1
+  DO WHILE ( ijarg <= narg )
+     CALL getarg(ijarg, cldum ) ; ijarg = ijarg + 1
+     SELECT CASE (cldum)
+     CASE ('-f'        ) ; CALL getarg(ijarg, cf_in    ) ; ijarg = ijarg + 1
+     CASE ('-v'        ) ; CALL getarg(ijarg, cv_in    ) ; ijarg = ijarg + 1
+     CASE ('-mskf'     ) ; CALL getarg(ijarg, cf_isfmsk) ; ijarg = ijarg + 1
+     CASE ('-mskv'     ) ; CALL getarg(ijarg, cv_isfmsk) ; ijarg = ijarg + 1
+     CASE ('-l'        ) ; CALL getarg(ijarg, cf_isflst) ; ijarg = ijarg + 1
+        ! options
+     CASE ('-w'        ) ; CALL getarg(ijarg, cldum    ) ; ijarg = ijarg + 1 ; READ(cldum,*) iimin
+        ;                  CALL getarg(ijarg, cldum    ) ; ijarg = ijarg + 1 ; READ(cldum,*) iimax
+        ;                  CALL getarg(ijarg, cldum    ) ; ijarg = ijarg + 1 ; READ(cldum,*) ijmin
+        ;                  CALL getarg(ijarg, cldum    ) ; ijarg = ijarg + 1 ; READ(cldum,*) ijmax
+        ;                  CALL getarg(ijarg, cldum    ) ; ijarg = ijarg + 1 ; READ(cldum,*) ikmin
+        ;                  CALL getarg(ijarg, cldum    ) ; ijarg = ijarg + 1 ; READ(cldum,*) ikmax
+     CASE ('-o'        ) ; CALL getarg(ijarg, cf_out   ) ; ijarg = ijarg + 1
 
-  IF (narg > 5 ) THEN
-     IF ( narg /= 9 ) THEN
-        PRINT *, ' ERROR : You must give 6 optional values (imin imax jmin jmax kmin kmax)'
-        STOP
-     ELSE
-        ! input optional iimin iimax ijmin ijmax
-        CALL getarg ( 6,cldum) ; READ(cldum,*) iimin
-        CALL getarg ( 7,cldum) ; READ(cldum,*) iimax
-        CALL getarg ( 8,cldum) ; READ(cldum,*) ijmin
-        CALL getarg ( 9,cldum) ; READ(cldum,*) ijmax
-     ENDIF
-  ENDIF
+     CASE DEFAULT        ; PRINT *,' ERROR : ',TRIM(cldum),' : unknown option.' ; STOP 99
+     END SELECT
+  END DO
 
   ! check input files and variables
   CALL CheckInput
