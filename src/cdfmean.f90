@@ -99,6 +99,8 @@ PROGRAM cdfmean
   CHARACTER(LEN=256)                         :: cldum              ! dummy char variable
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: clv_dep         ! array of possible depth name (or 3rd dimension)
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names        ! list of file names
+  CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cbas            ! list of basin names
+  CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cisf            ! list of basin names
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cbasins         ! list of basin names
 
   TYPE(variable), DIMENSION(:),  ALLOCATABLE :: stypvar            ! structure of output
@@ -409,18 +411,19 @@ PROGRAM cdfmean
   ALLOCATE ( dvmeanout(npk) )
   IF ( lvar ) ALLOCATE ( dvariance(npk) )
 
-  CALL CreateOutput
-
+  ALLOCATE(cbasins(nbasin))
   ! Get the basin masks
   ibmask(1,:,:) = 1
   IF ( lbas ) THEN
      DO jbasin = 1, nbas
-        ibmask(jbasin,:,:) = getvar(cn_fbasins, cbasins(jbasin), 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
+        ibmask(jbasin,:,:) = getvar(cn_fbasins, cbas(jbasin), 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
      END DO
+     cbasins(jbasin)=cbas(jbasin)
   END IF
 
   ! Get the isf mask
   IF ( lisf ) THEN
+     ALLOCATE(cisf(nisf))
      zmaskisf(:,:) = getvar(cfmskisf, cvmskisf , 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
      PRINT *, MAXVAL(zmaskisf), MINVAL(zmaskisf), cfmskisf, cvmskisf
      REWIND(iunit)
@@ -431,9 +434,14 @@ PROGRAM cdfmean
         ELSEWHERE
            ibmask(nbas+jisf,:,:) = 0
         END WHERE
-        PRINT *, SUM(ibmask), SUM(zmaskisf)
+        cisf(jisf)=TRIM(cdum)
+        cbasins(nbas+jisf)=cisf(jisf)
+        PRINT *, SUM(ibmask(nbas+jisf,:,:)), SUM(zmaskisf), TRIM(cdum), jisf
      END DO
   ENDIF
+  
+  ! create output
+  CALL CreateOutput
 
   OPEN(numout,FILE=cf_out)
   IF ( lvar ) OPEN(numvar,FILE=cf_var)
@@ -478,7 +486,7 @@ PROGRAM cdfmean
            dsum(jbasin) = dsum(jbasin) + dsum2d
            dvar(jbasin) = dvar(jbasin) + dvar2d
 
-           IF ( lbas ) clbas = ' for basin '//cbasins(jbasin)
+           IF ( lbas .OR. lisf ) clbas = ' for basin '//cbasins(jbasin)
 
            IF (dvol2d /= 0 )THEN
               dvmeanout(jk) = dsum2d/dvol2d
@@ -613,9 +621,9 @@ CONTAINS
     stypvar%savelog10         = 0.
     stypvar%conline_operation = 'N/A'
 
-    DO jbasin = 1,nbas
+    DO jbasin = 1,nbasin
 
-       IF ( lbas )  THEN ; cl_suffix='_'//TRIM(cbasins(jbasin))
+       IF ( lbas .OR. lisf )  THEN ; cl_suffix='_'//TRIM(cbasins(jbasin))
        ELSE              ; cl_suffix=''
        ENDIF
        ivar=ivar+1 ; n_mean(jbasin)=ivar
@@ -687,86 +695,6 @@ CONTAINS
        ENDIF
 
     ENDDO  ! basin loop
-
-    ! loop on all isf
-    REWIND(iunit)
-    DO jisf=1,nisf
-       ! read text file
-       READ(iunit,*) cid_isf, cdum
-
-       ivar=ivar+1 ; n_mean(jisf)=ivar
-       ipk(n_mean(jisf))               =  nvpk
-       stypvar(n_mean(jisf))%cname             = 'mean_'//TRIM(cv_nam)//TRIM(cdum)
-       stypvar(n_mean(jisf))%clong_name        = 'mean_'//TRIM(cllong_name)//TRIM(cdum)
-       stypvar(n_mean(jisf))%cshort_name       = 'mean_'//TRIM(clshort_name)//TRIM(cdum)
-       stypvar(n_mean(jisf))%caxis             = 'ZT'
-       stypvar(n_mean(jisf))%cprecision        = 'r8'
-
-       ivar=ivar+1 ; n_mean3d(jisf)=ivar
-       ipk(n_mean3d(jisf))             =  nvpk
-       stypvar(n_mean3d(jisf))%cname             = 'mean_3D_'//TRIM(cv_nam)//TRIM(cdum)
-       stypvar(n_mean3d(jisf))%clong_name        = 'mean_3D_'//TRIM(cllong_name)//'_for_'//TRIM(cdum)//'_with_id_'//TRIM(cid_isf)
-       stypvar(n_mean3d(jisf))%cshort_name       = 'mean_3D_'//TRIM(clshort_name)//TRIM(cdum)
-       stypvar(n_mean3d(jisf))%caxis             = 'ZT'
-       stypvar(n_mean3d(jisf))%cprecision        = 'r8'
-
-       IF ( lvar) THEN
-          ivar=ivar+1 ; n_var(jisf)=ivar
-          ipk(n_var(jisf))            =  nvpk
-          stypvar(n_var(jisf))%cunits         = TRIM(clunits)//'^2'
-          stypvar(n_var(jisf))%cname          = 'var_'//TRIM(cv_nam)//TRIM(cdum)
-          stypvar(n_var(jisf))%clong_name     = 'var_'//TRIM(cllong_name)//TRIM(cdum)
-          stypvar(n_var(jisf))%cshort_name    = 'var_'//TRIM(clshort_name)//TRIM(cdum)
-          stypvar(n_var(jisf))%caxis          = 'ZT'
-
-          ivar=ivar+1 ; n_var3d(jisf)=ivar
-          ipk(n_var3d(jisf))            =  1
-          stypvar(n_var3d(jisf))%cunits         = TRIM(clunits)//'^2'
-          stypvar(n_var3d(jisf))%cname          = 'var_3D_'//TRIM(cv_nam)//TRIM(cdum)
-          stypvar(n_var3d(jisf))%clong_name     = 'var_3D_'//TRIM(cllong_name)//TRIM(cdum)
-          stypvar(n_var3d(jisf))%cshort_name    = 'var_3D_'//TRIM(clshort_name)//TRIM(cdum)
-          stypvar(n_var3d(jisf))%caxis          = 'T'
-       ENDIF
-
-       IF ( lsum ) THEN
-          ivar=ivar+1 ; n_sum(jisf)=ivar
-          ipk(n_sum(jisf))            =  nvpk
-          stypvar(n_sum(jisf))%cunits         = TRIM(clunits)//'.m^3'
-          stypvar(n_sum(jisf))%cname          = 'sum_'//TRIM(cv_nam)//TRIM(cdum)
-          stypvar(n_sum(jisf))%clong_name     = 'sum_'//TRIM(cllong_name)//TRIM(cdum)
-          stypvar(n_sum(jisf))%cshort_name    = 'sum_'//TRIM(clshort_name)//TRIM(cdum)
-          stypvar(n_sum(jisf))%caxis          = 'ZT'
-
-          ivar=ivar+1 ; n_sum3d(jisf)=ivar
-          ipk(n_sum3d(jisf))            =  1
-          stypvar(n_sum3d(jisf))%cunits         = TRIM(clunits)//'.m^3'
-          stypvar(n_sum3d(jisf))%cname          = 'sum_3D_'//TRIM(cv_nam)//TRIM(cdum)
-          stypvar(n_sum3d(jisf))%clong_name     = 'sum_3D_'//TRIM(cllong_name)//TRIM(cdum)
-          stypvar(n_sum3d(jisf))%cshort_name    = 'sum_3D_'//TRIM(clshort_name)//TRIM(cdum)
-          stypvar(n_sum3d(jisf))%caxis          = 'T'
-       ENDIF
-
-       IF ( lminmax ) THEN
-          ivar=ivar+1 ; n_min(jisf)=ivar
-          ipk(n_min(jisf))            =  1
-          stypvar(n_min(jisf))%cunits         = TRIM(clunits)
-          stypvar(n_min(jisf))%cname          = 'min_'//TRIM(cv_nam)//TRIM(cdum)
-          stypvar(n_min(jisf))%clong_name     = 'min_'//TRIM(cllong_name)//TRIM(cdum)
-          stypvar(n_min(jisf))%cshort_name    = 'min_'//TRIM(clshort_name)//TRIM(cdum)
-          stypvar(n_min(jisf))%caxis          = 'ZT'
-
-          ivar=ivar+1 ; n_max(jisf)=ivar
-          ipk(n_max(jisf))            =  1
-          stypvar(n_max(jisf))%cunits         = TRIM(clunits)
-          stypvar(n_max(jisf))%cname          = 'max_'//TRIM(cv_nam)//TRIM(cdum)
-          stypvar(n_max(jisf))%clong_name     = 'max_'//TRIM(cllong_name)//TRIM(cdum)
-          stypvar(n_max(jisf))%cshort_name    = 'max_'//TRIM(clshort_name)//TRIM(cdum)
-          stypvar(n_max(jisf))%caxis          = 'T'
-       ENDIF
-
-    END DO
-
-
 
     ! create output fileset
     IF ( lnodep ) THEN
@@ -849,20 +777,20 @@ CONTAINS
        nbas=nbas+1
     END DO
 
-    ALLOCATE(cbasins(nbas) )
+    ALLOCATE(cbas(nbas) )
     DO jbasin=1,nbas
-       CALL getarg( ijarg, cbasins(jbasin)) ; ijarg=ijarg+1
+       CALL getarg( ijarg, cbas(jbasin)) ; ijarg=ijarg+1
     END DO
     PRINT *, 'Basin File : ', TRIM(cn_fbasins)
     PRINT *, '  nbas : ', nbas
     IF (nbas==0) THEN; PRINT *, 'NBASIN=0, ERROR, STOP'; STOP 99 ; ENDIF
 
     DO jbasin = 1, nbas
-       PRINT *,'  basin ',jbasin,' : ',TRIM(cbasins(jbasin))
+       PRINT *,'  basin ',jbasin,' : ',TRIM(cbas(jbasin))
     END DO
-    ! check if all cbasins are in cn_fbasins
+    ! check if all cbas are in cn_fbasins
     DO jbasin = 1, nbas
-       lchkv=lchkv .OR. chkvar(cn_fbasins,cbasins(jbasin))
+       lchkv=lchkv .OR. chkvar(cn_fbasins,cbas(jbasin))
     END DO
     IF ( lchkv ) STOP 99 ! missing variables.
 
