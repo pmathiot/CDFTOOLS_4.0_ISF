@@ -34,6 +34,7 @@ PROGRAM cdfmoc
   !!               See :   AMOC Metrics guidelines availablke on:
   !!    https://www.godae-oceanview.org/documents/q/action-edit/ref-264/parent-261/
   !!----------------------------------------------------------------------
+  USE cdftools  ! for cdf_findij
   USE cdfio
   USE modcdfnames
   USE eos
@@ -119,6 +120,7 @@ PROGRAM cdfmoc
   CHARACTER(LEN=256)                          :: cf_tfil         ! Grid T file (case of decomposition)
   CHARACTER(LEN=256)                          :: cf_ufil         ! Grid U file (case Rapid)
   CHARACTER(LEN=256)                          :: cf_sfil         ! Grid S file (case Rapid)
+  CHARACTER(LEN=256)                          :: cf_fe3v, cv_ve3v
 
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
@@ -235,14 +237,15 @@ PROGRAM cdfmoc
   IF ( lrap  ) lchk = lchk .OR. chkfile (TRIM(cf_tfil)) .OR. chkfile (TRIM(cf_sfil)) .OR. chkfile(TRIM(cf_ufil)) 
   IF ( lchk  ) STOP 99  ! missing file(s)
   IF ( lg_vvl) THEN
-     cn_fe3v = cf_vfil
-     cn_ve3v = cn_ve3vvvl
+     cf_fe3v = cf_vfil
+     cv_ve3v = cn_ve3vvvl
   ENDIF
+  PRINT *, TRIM(cf_fe3v), TRIM(cv_ve3v)
 
   IF ( lrap ) THEN 
      ! all the work will be done in a separated routine for RAPID-MOCHA section
      CALL rapid_amoc 
-     STOP 99  ! program stops here in this case
+     STOP 0  ! program stops here in this case
   ENDIF
 
   npiglo = getdim (cf_vfil,cn_x)
@@ -579,7 +582,7 @@ CONTAINS
 
     ivmask(:,:) = getvar(cn_fmsk, cn_vmask, jk, npiglo, npjglo)
     IF ( lfull ) THEN ; get_e3v(:,:) = e31d(jk)
-    ELSE              ; get_e3v(:,:) = getvar(cn_fe3v, cn_ve3v, jk, npiglo, npjglo, ktime=kt, ldiom=.NOT.lg_vvl )
+    ELSE              ; get_e3v(:,:) = getvar(cf_fe3v, cv_ve3v, jk, npiglo, npjglo, ktime=kt, ldiom=.NOT.lg_vvl )
     ENDIF
     get_e3v(:,:) = get_e3v(:,:) * ivmask(:,:)
 
@@ -604,7 +607,6 @@ CONTAINS
     !!    https://www.godae-oceanview.org/documents/q/action-edit/ref-264/parent-261/
     !! 
     !!----------------------------------------------------------------------
-    USE cdftools  ! for cdf_findij
     ! Geographical settings for Rapid/Mocha Array
     REAL(KIND=4), PARAMETER :: rp_lat_rapid  = 26.5  ! latitude of Rapid array
     REAL(KIND=4), PARAMETER :: rp_lonw_rapid = -80.1 ! longitude of the western most point
@@ -696,16 +698,18 @@ CONTAINS
        ELSE               ; it=1
        ENDIF
 
+       PRINT *, 'sart get e3', TRIM(cf_fe3v), TRIM(cv_ve3v), lg_vvl
        IF ( it == jt ) THEN ! read each time only for vvl
           DO jk = 1, npk
              IF ( lfull ) THEN
                 e3vrapid(:,jk) = e31d(jk)
              ELSE
-                zwk(:,:) = getvar(cn_fe3v, cn_ve3v,jk,npiglo,1,kimin=iiw,kjmin=ijrapid, ktime=it, ldiom=.NOT.lg_vvl )
+                zwk(:,:) = getvar(cf_fe3v, cv_ve3v,jk,npiglo,1,kimin=iiw,kjmin=ijrapid, ktime=it, ldiom=.NOT.lg_vvl )
                 e3vrapid(:,jk) = zwk(:,1)
              ENDIF
           ENDDO
        ENDIF
+       PRINT *, 'end get e3'
        ! Get variables V,dtaux,T,S
        DO jk = 1 , npk
           zwk(:,:) = getvar(cf_vfil,cn_vomecrty,jk,npiglo,1,kimin=iiw,kjmin=ijrapid, ktime = jt )
