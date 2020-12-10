@@ -407,10 +407,10 @@ CONTAINS
     ENDIF
     IF ( kz /= 0 ) THEN
        istatus = NF90_DEF_VAR(icout,TRIM(clvdep),NF90_FLOAT,(/nid_z/), nid_dep)
-       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR ',TRIM(clvdep),' in create'    ; STOP 98 ; ENDIF
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'NF90_DEF_VAR kz in create'    ; STOP 98 ; ENDIF
        ! JMM bug fix : if cdep present, then chose attribute from cldepref
        incid=getincid(cdfilref, clvdep, incid_ref) ; istatus = copyatt(TRIM(clvdep), nid_dep,incid,icout)
-       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt ',TRIM(clvdep),' in create'    ; STOP 98 ; ENDIF
+       IF (istatus /= 0 ) THEN ;PRINT *, NF90_STRERROR(istatus); PRINT *,'copyatt kz in create'    ; STOP 98 ; ENDIF
     ENDIF
 
     istatus = NF90_DEF_VAR(icout,TRIM(clvtimec),NF90_DOUBLE,(/nid_t/), nid_tim)
@@ -501,6 +501,7 @@ CONTAINS
              ENDIF
           END SELECT
 
+PRINT *, TRIM(sdtyvar(jv)%cname), jv
 #if defined key_netcdf4
          IF ( ll_nc4 ) THEN
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv), & 
@@ -1240,14 +1241,14 @@ CONTAINS
           istatus=NF90_GET_ATT(incid, jv, 'valid_min', zatt)
           sdtypvar(jv)%valid_min = zatt
        ELSE
-          sdtypvar(jv)%valid_min = 0.
+          sdtypvar(jv)%valid_min = -1.e20
        ENDIF
 
        IF ( NF90_INQUIRE_ATTRIBUTE(incid, jv, 'valid_max') == NF90_NOERR ) THEN
           istatus=NF90_GET_ATT(incid, jv, 'valid_max', zatt)
           sdtypvar(jv)%valid_max = zatt
        ELSE
-          sdtypvar(jv)%valid_max = 0.
+          sdtypvar(jv)%valid_max = 1.e20
        ENDIF
 
        IF ( NF90_INQUIRE_ATTRIBUTE(incid, jv, 'iweight') == NF90_NOERR ) THEN

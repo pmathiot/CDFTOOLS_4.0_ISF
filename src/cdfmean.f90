@@ -38,7 +38,8 @@ PROGRAM cdfmean
   INTEGER(KIND=4)                            :: npk_fi             ! size of the domain from input file
   INTEGER(KIND=4)                            :: npk, npt           ! size of the domain
   INTEGER(KIND=4)                            :: nvpk               ! vertical levels in working variable
-  INTEGER(KIND=4)                            :: nbasin=1           ! number of basins
+  INTEGER(KIND=4)                            :: nbas=0             ! number of sub bassin
+  INTEGER(KIND=4)                            :: nbasin=1           ! number total of basins
   INTEGER(KIND=4)                            :: numout=10          ! logical unit for mean output file
   INTEGER(KIND=4)                            :: numvar=11          ! logical unit for variance output file
   INTEGER(KIND=4)                            :: numsum=12          ! logical unit for sum output file
@@ -98,6 +99,8 @@ PROGRAM cdfmean
   CHARACTER(LEN=256)                         :: cldum              ! dummy char variable
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: clv_dep         ! array of possible depth name (or 3rd dimension)
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cv_names        ! list of file names
+  CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cbas            ! list of basin names
+  CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cisf            ! list of basin names
   CHARACTER(LEN=256), DIMENSION(:), ALLOCATABLE :: cbasins         ! list of basin names
 
   TYPE(variable), DIMENSION(:),  ALLOCATABLE :: stypvar            ! structure of output
@@ -113,6 +116,12 @@ PROGRAM cdfmean
   LOGICAL                                    :: lzeromean = .FALSE.! zero mean  flag
   LOGICAL                                    :: lnodep    = .FALSE.! no depth flag
   LOGICAL                                    :: lchk               ! flag for missing files
+
+  LOGICAL                                    :: lisf
+  INTEGER                                    :: idisf, iunit
+  INTEGER                                    :: jisf, nisf
+  CHARACTER(LEN=256)                         :: cfmskisf,cvmskisf, cfnamisf, cdum
+  REAL(KIND=4), DIMENSION(:,:),  ALLOCATABLE :: zmaskisf
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
 
@@ -157,6 +166,7 @@ PROGRAM cdfmean
      PRINT *,'              This option is a usefull alternative to the -w option, when the '
      PRINT *,'              area of interest is not ''box-like''. However, for vertical '
      PRINT *,'              selection, both -w and -M can be used together.'
+     PRINT *,'       [-I ISF-mask name id] : will compute the means for a specific isf front and cavities'
      PRINT *,'       [-B BASIN-mask LST-basins] : will compute the means for sub-basins,'
      PRINT *,'              specified by LST-basins from BASIN-mask file. LST-basin is a '
      PRINT *,'              blank separated list of mask variable names in BASIN-mask file.'
@@ -230,6 +240,10 @@ PROGRAM cdfmean
      CASE ('-M'        ) ; CALL getarg ( ijarg, cn_fmsk) ; ijarg = ijarg + 1
         ;                  CALL getarg ( ijarg, cv_msk ) ; ijarg = ijarg + 1
      CASE ('-S'        ) ; lsum = .TRUE.
+     CASE ('-I'        ) ; lisf = .TRUE.
+                         ; CALL getarg ( ijarg, cfmskisf) ; ijarg = ijarg + 1
+                         ; CALL getarg ( ijarg, cvmskisf) ; ijarg = ijarg + 1
+                         ; CALL getarg ( ijarg, cfnamisf) ; ijarg = ijarg + 1
      CASE ('-B'        ) ; lbas = .TRUE.
         ;                ; CALL getarg ( ijarg, cn_fbasins) ; ijarg = ijarg + 1
         ;                ; CALL GetLstMask  ! set up nbasin and cbasins(:)
@@ -252,7 +266,29 @@ PROGRAM cdfmean
   lchk = chkfile(cn_fmsk) .OR. lchk
   lchk = chkfile(cf_in  ) .OR. lchk
   IF ( lbas ) lchk =  chkfile(cn_fbasins ) .OR. lchk
+  IF ( lisf ) lchk =  chkfile(cfmskisf) .OR. lchk
+  IF ( lisf ) lchk =  chkfile(cfnamisf) .OR. lchk
   IF ( lchk ) STOP 99 ! missing file
+
+  IF ( lbas .AND. lisf ) THEN
+     PRINT *, 'E R R O R: lbas and lisf not compatibale, STOP'
+     STOP 99
+  END IF
+
+  IF (lisf) THEN
+     OPEN(unit=iunit, file=cfnamisf, form='formatted', status='old')
+     PRINT *, iunit
+     ! get number of isf
+     nisf = 0 
+     cdum='XXX'
+     DO WHILE ( TRIM(cdum) .NE. 'EOF')
+        READ(iunit,*) cdum
+        nisf=nisf+1
+     END DO
+     nisf = nisf - 1 
+     PRINT *, nisf,' ice shelf detected in the input text file'
+     nbasin = nbas + nisf
+  END IF
 
   npiglo = getdim (cf_in, cn_x)
   npjglo = getdim (cf_in, cn_y)
@@ -287,7 +323,7 @@ PROGRAM cdfmean
 
   ! Allocate arrays
   ALLOCATE ( ibmask(nbasin,npiglo,npjglo) )
-  ALLOCATE ( zmask(npiglo,npjglo), zvzm(npiglo,npjglo), zmaskutil(npiglo,npjglo) )
+  ALLOCATE ( zmask(npiglo,npjglo), zvzm(npiglo,npjglo), zmaskutil(npiglo,npjglo), zmaskisf(npiglo,npjglo) )
   ALLOCATE ( zv   (npiglo,npjglo) )
   ALLOCATE ( e1   (npiglo,npjglo), e2(npiglo,npjglo), e3(npiglo,npjglo) )
   ALLOCATE ( dvariance3d(nbasin,npt), dvmeanout3d(nbasin,npt) )
@@ -375,16 +411,37 @@ PROGRAM cdfmean
   ALLOCATE ( dvmeanout(npk) )
   IF ( lvar ) ALLOCATE ( dvariance(npk) )
 
-  CALL CreateOutput
-
+  ALLOCATE(cbasins(nbasin))
   ! Get the basin masks
+  ibmask(1,:,:) = 1
   IF ( lbas ) THEN
-     DO jbasin = 1, nbasin
-        ibmask(jbasin,:,:) = getvar(cn_fbasins, cbasins(jbasin), 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
+     DO jbasin = 1, nbas
+        ibmask(jbasin,:,:) = getvar(cn_fbasins, cbas(jbasin), 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
      END DO
-  ELSE
-     ibmask(1,:,:) = 1
+     cbasins(jbasin)=cbas(jbasin)
+  END IF
+
+  ! Get the isf mask
+  IF ( lisf ) THEN
+     ALLOCATE(cisf(nisf))
+     zmaskisf(:,:) = getvar(cfmskisf, cvmskisf , 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
+     PRINT *, MAXVAL(zmaskisf), MINVAL(zmaskisf), cfmskisf, cvmskisf
+     REWIND(iunit)
+     DO jisf = 1, nisf
+        READ(iunit,*) idisf, cdum
+        WHERE (zmaskisf(:,:) == -idisf)
+           ibmask(nbas+jisf,:,:) = 1
+        ELSEWHERE
+           ibmask(nbas+jisf,:,:) = 0
+        END WHERE
+        cisf(jisf)=TRIM(cdum)
+        cbasins(nbas+jisf)=cisf(jisf)
+        PRINT *, SUM(ibmask(nbas+jisf,:,:)), SUM(zmaskisf), TRIM(cdum), jisf
+     END DO
   ENDIF
+  
+  ! create output
+  CALL CreateOutput
 
   OPEN(numout,FILE=cf_out)
   IF ( lvar ) OPEN(numvar,FILE=cf_var)
@@ -429,7 +486,7 @@ PROGRAM cdfmean
            dsum(jbasin) = dsum(jbasin) + dsum2d
            dvar(jbasin) = dvar(jbasin) + dvar2d
 
-           IF ( lbas ) clbas = ' for basin '//cbasins(jbasin)
+           IF ( lbas .OR. lisf ) clbas = ' for basin '//cbasins(jbasin)
 
            IF (dvol2d /= 0 )THEN
               dvmeanout(jk) = dsum2d/dvol2d
@@ -519,15 +576,6 @@ PROGRAM cdfmean
 
      CALL CreateOutputZeromean
 
-     ! Get the basin masks
-     IF ( lbas ) THEN
-        DO jbasin = 1, nbasin
-           ibmask(jbasin,:,:) = getvar(cn_fbasins, cbasins(jbasin), 1, npiglo, npjglo)
-        END DO
-     ELSE
-        ibmask(1,:,:) = 1
-     ENDIF
-
      DO jt=1,npt
         DO jk = 1, nvpk
            ik = jk+ikmin-1
@@ -554,7 +602,8 @@ CONTAINS
     !!
     !!----------------------------------------------------------------------
     INTEGER(KIND=4)   :: ivar   ! variable counter in id_varout
-    CHARACTER(LEN=80) :: cl_suffix
+    CHARACTER(LEN=80) :: cl_suffix, cdumi, cid_isf
+    
     !!----------------------------------------------------------------------
     rdumlon(:,:) = 0.
     rdumlat(:,:) = 0.
@@ -572,9 +621,9 @@ CONTAINS
     stypvar%savelog10         = 0.
     stypvar%conline_operation = 'N/A'
 
-
     DO jbasin = 1,nbasin
-       IF ( lbas )  THEN ; cl_suffix='_'//TRIM(cbasins(jbasin))
+
+       IF ( lbas .OR. lisf )  THEN ; cl_suffix='_'//TRIM(cbasins(jbasin))
        ELSE              ; cl_suffix=''
        ENDIF
        ivar=ivar+1 ; n_mean(jbasin)=ivar
@@ -626,6 +675,7 @@ CONTAINS
           stypvar(n_sum3d(jbasin))%cshort_name    = 'sum_3D_'//TRIM(clshort_name)//TRIM(cl_suffix)
           stypvar(n_sum3d(jbasin))%caxis          = 'T'
        ENDIF
+
        IF ( lminmax ) THEN
           ivar=ivar+1 ; n_min(jbasin)=ivar
           ipk(n_min(jbasin))            =  1
@@ -647,9 +697,16 @@ CONTAINS
     ENDDO  ! basin loop
 
     ! create output fileset
-    ncout = create      (cf_ncout,   cf_in,  ikx,   iky,   nvpk)
-    ierr  = createvar   (ncout,      stypvar, nvars, ipk,   id_varout, cdglobal=TRIM(cglobal) )
-    ierr  = putheadervar(ncout,      cf_in,  ikx, iky, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdep(1:nvpk), cdep=cv_dep)
+    IF ( lnodep ) THEN
+       PRINT *, 'no depth ',nvars
+       ncout = create      (cf_ncout,   cf_in,  ikx,   iky,  0)
+       ierr  = createvar   (ncout,      stypvar, nvars, ipk,   id_varout, cdglobal=TRIM(cglobal) )
+       ierr  = putheadervar(ncout,      cf_in,  ikx, iky, 0, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdep(1:nvpk), cdep=cv_dep)
+    ELSE
+       ncout = create      (cf_ncout,   cf_in,  ikx,   iky,   nvpk)
+       ierr  = createvar   (ncout,      stypvar, nvars, ipk,   id_varout, cdglobal=TRIM(cglobal) )
+       ierr  = putheadervar(ncout,      cf_in,  ikx, iky, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdep(1:nvpk), cdep=cv_dep)
+    END IF
     dtim  = getvar1d(cf_in, cn_vtimec, npt  )
     ierr  = putvar1d(ncout,  dtim,  npt, 'T')
 
@@ -714,26 +771,26 @@ CONTAINS
     !!----------------------------------------------------------------------
     iiarg=ijarg
     cldum='xxxx'
-    nbasin=0
+    nbas=0
     DO WHILE ( cldum(1:1) /= '-' .AND. iiarg <= narg )
        CALL getarg( iiarg, cldum) ; iiarg=iiarg+1
-       nbasin=nbasin+1
+       nbas=nbas+1
     END DO
 
-    ALLOCATE(cbasins(nbasin) )
-    DO jbasin=1,nbasin
-       CALL getarg( ijarg, cbasins(jbasin)) ; ijarg=ijarg+1
+    ALLOCATE(cbas(nbas) )
+    DO jbasin=1,nbas
+       CALL getarg( ijarg, cbas(jbasin)) ; ijarg=ijarg+1
     END DO
     PRINT *, 'Basin File : ', TRIM(cn_fbasins)
-    PRINT *, '  nbasin : ', nbasin
-    IF (nbasin==0) THEN; PRINT *, 'NBASIN=0, ERROR, STOP'; STOP 99 ; ENDIF
+    PRINT *, '  nbas : ', nbas
+    IF (nbas==0) THEN; PRINT *, 'NBASIN=0, ERROR, STOP'; STOP 99 ; ENDIF
 
-    DO jbasin = 1, nbasin
-       PRINT *,'  basin ',jbasin,' : ',TRIM(cbasins(jbasin))
+    DO jbasin = 1, nbas
+       PRINT *,'  basin ',jbasin,' : ',TRIM(cbas(jbasin))
     END DO
-    ! check if all cbasins are in cn_fbasins
-    DO jbasin = 1, nbasin
-       lchkv=lchkv .OR. chkvar(cn_fbasins,cbasins(jbasin))
+    ! check if all cbas are in cn_fbasins
+    DO jbasin = 1, nbas
+       lchkv=lchkv .OR. chkvar(cn_fbasins,cbas(jbasin))
     END DO
     IF ( lchkv ) STOP 99 ! missing variables.
 
