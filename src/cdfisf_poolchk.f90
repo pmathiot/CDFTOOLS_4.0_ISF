@@ -56,6 +56,7 @@ PROGRAM cdfisf_poolchk
 
   LOGICAL                                        :: lchk=.FALSE.     ! missing files flag
   LOGICAL                                        :: lnc4=.FALSE.     ! netcdf4 flag
+  LOGICAL                                        :: lperio=.FALSE.   ! periodicity
   !!----------------------------------------------------------------------
   CALL ReadCdfNames()
 
@@ -79,6 +80,7 @@ PROGRAM cdfisf_poolchk
      PRINT *,'       -v ISFDRAFT-variable: name of the variable for ice shelf draft.'
      PRINT *,'       -nc4 : use netcdf4 with chunking and deflation for the output.'
      PRINT *,'       -o OUT-file : name of the output file. [Default : ',TRIM(cf_out),' ]' 
+     PRINT *,'       -ew : flag to enforce the ew periodicity'
      PRINT *,'      '
      PRINT *,'     REQUIRED FILES :'
      PRINT *,'       Only the mask file given as argument' 
@@ -102,6 +104,7 @@ PROGRAM cdfisf_poolchk
      CASE ( '-d'  ) ; CALL getarg(ijarg, cf_isfdr) ; ijarg = ijarg+1
      CASE ( '-v'  ) ; CALL getarg(ijarg, cv_isfdr) ; ijarg = ijarg+1
      CASE ( '-nc4') ; lnc4 = .TRUE.
+     CASE ( '-ew' ) ; lperio = .TRUE.
      CASE DEFAULT   ; PRINT *,' ERROR : ', TRIM(cldum),' : unknown option.' ; STOP 99
      END SELECT
   ENDDO
@@ -146,7 +149,7 @@ PROGRAM cdfisf_poolchk
   iiseed= npiglo/2  ; ijseed = ijmax -1 ; ikseed = 2
   PRINT *,' SEED position',iiseed, ijseed, ikseed, itab3d(iiseed, ijseed, ikseed)
 
-  CALL FillPool3D( iiseed, ijseed,ikseed, itab3d, -ifill )
+  CALL FillPool3D( iiseed, ijseed,ikseed, itab3d, -ifill, lperio )
   PRINT *, '  Number of disconected points : ', COUNT(  (itab3d(:,1:ijmax-2,:) == 1) )
   ! at this point itab3d (:,1:ijmax,:) can have 3 different values :
   !              0 where there where already 0

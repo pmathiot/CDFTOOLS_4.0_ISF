@@ -530,7 +530,8 @@ CONTAINS
     !!----------------------------------------------------------------------
     INTEGER(KIND=4),                   INTENT(in)    :: kiseed, kjseed, kkseed
     INTEGER(KIND=4),                   INTENT(in)    :: kifill   ! new bathymetry
-    INTEGER(KIND=4),                   INTENT(in)    :: lperio   ! periodicity
+    LOGICAL        ,                   INTENT(in)    :: lperio
+
     INTEGER(KIND=2), DIMENSION(:,:,:), INTENT(inout) :: kdta     ! new bathymetry
 
     INTEGER :: ik,iik                   ! number of point change
@@ -542,6 +543,9 @@ CONTAINS
     INTEGER(KIND=2), DIMENSION(:,:),   ALLOCATABLE :: ipile    ! pile variable
     INTEGER(KIND=2), DIMENSION(:,:,:), ALLOCATABLE :: idata    ! new data
     !!----------------------------------------------------------------------
+    ! WARNING
+    IF (lperio) PRINT *, 'W A R N I N G: north fold not treated properly ...'
+
     ! infer domain size from input array
     ipiglo = SIZE(kdta,1)
     ipjglo = SIZE(kdta,2)
