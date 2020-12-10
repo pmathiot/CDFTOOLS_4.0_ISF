@@ -1241,14 +1241,14 @@ PRINT *, TRIM(sdtyvar(jv)%cname), jv
           istatus=NF90_GET_ATT(incid, jv, 'valid_min', zatt)
           sdtypvar(jv)%valid_min = zatt
        ELSE
-          sdtypvar(jv)%valid_min = 0.
+          sdtypvar(jv)%valid_min = -1.e20
        ENDIF
 
        IF ( NF90_INQUIRE_ATTRIBUTE(incid, jv, 'valid_max') == NF90_NOERR ) THEN
           istatus=NF90_GET_ATT(incid, jv, 'valid_max', zatt)
           sdtypvar(jv)%valid_max = zatt
        ELSE
-          sdtypvar(jv)%valid_max = 0.
+          sdtypvar(jv)%valid_max = 1.e20
        ENDIF
 
        IF ( NF90_INQUIRE_ATTRIBUTE(incid, jv, 'iweight') == NF90_NOERR ) THEN
