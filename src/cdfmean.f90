@@ -614,8 +614,8 @@ CONTAINS
     ! define new variables for output 
     stypvar%cunits            = TRIM(clunits)
     stypvar%rmissing_value    = 99999.
-    stypvar%valid_min         = -1000.
-    stypvar%valid_max         = 1000.
+    stypvar%valid_min         = -1.e20
+    stypvar%valid_max         = 1.e20
     stypvar%scale_factor      = 1.
     stypvar%add_offset        = 0.
     stypvar%savelog10         = 0.
