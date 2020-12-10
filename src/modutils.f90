@@ -519,7 +519,7 @@ CONTAINS
 
 
 
-  SUBROUTINE FillPool3D(kiseed, kjseed, kkseed, kdta, kifill)
+  SUBROUTINE FillPool3D(kiseed, kjseed, kkseed, kdta, kifill, lperio)
     !!---------------------------------------------------------------------
     !!                  ***  ROUTINE FillPool3D  ***
     !!
@@ -530,6 +530,7 @@ CONTAINS
     !!----------------------------------------------------------------------
     INTEGER(KIND=4),                   INTENT(in)    :: kiseed, kjseed, kkseed
     INTEGER(KIND=4),                   INTENT(in)    :: kifill   ! new bathymetry
+    INTEGER(KIND=4),                   INTENT(in)    :: lperio   ! periodicity
     INTEGER(KIND=2), DIMENSION(:,:,:), INTENT(inout) :: kdta     ! new bathymetry
 
     INTEGER :: ik,iik                   ! number of point change

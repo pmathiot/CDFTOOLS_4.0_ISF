@@ -24,7 +24,7 @@ PROGRAM cdfisf_fill
   !!-----------------------------------------------------------------------------
   IMPLICIT NONE
 
-  INTEGER(KIND=4)                               :: jisf               ! dummy loop integer 
+  INTEGER(KIND=4)                               :: jisf, ji, jj       ! dummy loop integer 
   INTEGER(KIND=4)                               :: ierr, ipos         ! working integer
   INTEGER(KIND=4)                               :: idep, idep_max     ! possible depth index, maximum
   INTEGER(KIND=4)                               :: narg, iargc, ijarg ! browsing command line
@@ -37,17 +37,17 @@ PROGRAM cdfisf_fill
   INTEGER(KIND=4)                               :: ifill
   INTEGER(KIND=4), DIMENSION(:),    ALLOCATABLE :: ipk                ! arrays of vertical level for each var
   INTEGER(KIND=4), DIMENSION(:),    ALLOCATABLE :: id_varout          ! varid's of average vars
-  INTEGER(KIND=2), DIMENSION(:,:),  ALLOCATABLE :: itab
+  INTEGER(KIND=2), DIMENSION(:,:),  ALLOCATABLE :: itab, itabcnt
 
   REAL(KIND=4)                                  :: rlon, rlat         ! longitude and latitude of one point in ISF
   REAL(KIND=4)                                  :: rdraftmin, rdraftmax
-  REAL(KIND=4)                                  :: rdum
-  REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dtab
+  REAL(KIND=4)                                  :: rdum, rdum0, rdum1
+  REAL(KIND=8), DIMENSION(:,:),     ALLOCATABLE :: dtab, ssmask, e1, e2, area
 
   CHARACTER(LEN=256)                            :: cf_in              ! input file name
   CHARACTER(LEN=256)                            :: cf_isflist         ! input file name (txt)
   CHARACTER(LEN=256)                            :: cf_isflistup       ! output file name (update of input, with draftmin/max
-  CHARACTER(LEN=256)                            :: cf_out='fill.nc'   ! output file for average
+  CHARACTER(LEN=256)                            :: cf_out='mskisf.nc'   ! output file for average
   CHARACTER(LEN=256)                            :: cf_boundary        ! boundary file
   CHARACTER(LEN=256)                            :: cv_dep             ! depth dimension name
   CHARACTER(LEN=256)                            :: cv_in              ! depth dimension name
@@ -74,10 +74,6 @@ PROGRAM cdfisf_fill
      PRINT *,'               edit on the ISF-file is required.'
      PRINT *,'      '
      PRINT *,'     ARGUMENTS : '
-     PRINT *,'       [-f ISF-file] : netcdf file  which contains the ice shelf draft variable'
-     PRINT *,'                     (mesh_zgr is OK). It is used as a mask, only.'
-     PRINT *,'       [-v ISF-var]  : variable name corresponding to the ice shelf draft or '
-     PRINT *,'                      ice shelf level'
      PRINT *,'       [-l ISF-list] : text file containing at least the following information: '
      PRINT *,'                 1  NAME    LON  LAT I  J DUM DUM DUM DUM ldiag'
      PRINT *,'                 ...             '
@@ -118,43 +114,52 @@ PROGRAM cdfisf_fill
      CALL getarg(ijarg, cldum ) ; ijarg = ijarg + 1 
      SELECT CASE ( cldum)
      CASE ( '-ew') ; lperio = .true.
-     CASE ( '-f' ) ; CALL getarg(ijarg, cf_in      ) ; ijarg = ijarg + 1
-     CASE ( '-v' ) ; CALL getarg(ijarg, cv_in      ) ; ijarg = ijarg + 1
-     CASE ( '-l' ) ; CALL getarg(ijarg, cf_isflist ) ; ijarg = ijarg + 1
-     CASE ( '-bf') ; CALL getarg(ijarg, cf_boundary) ; ijarg = ijarg + 1; lboundf=.TRUE.
-     CASE ( '-o' ) ; CALL getarg(ijarg, cf_out     ) ; ijarg = ijarg + 1
+     CASE ( '-bf') ; CALL getarg(ijarg, cf_boundary) ; lboundf=.TRUE. ; ijarg = ijarg + 1
+     CASE ( '-l' ) ; CALL getarg(ijarg, cf_isflist ) ;                ijarg = ijarg + 1
+     CASE ( '-o' ) ; CALL getarg(ijarg, cf_out     ) ;                ijarg = ijarg + 1
      CASE ('-nc4') ; lnc4 = .TRUE.
      CASE DEFAULT  ; PRINT *,' ERROR : ', TRIM(cldum) ,' : unknown option.'; STOP 99
      END SELECT
   ENDDO
 
-  IF ( chkfile (cf_in) .OR. chkfile (cf_isflist)  ) STOP 99 ! missing file
+  IF ( chkfile (cn_fmsk) .OR. chkfile (cn_fzgr) .OR. chkfile (cf_isflist)  ) STOP 99 ! missing file
 
   ipos = INDEX(cf_isflist,'.')
   cldum=cf_isflist(ipos+1:)
   cf_isflistup=cf_isflist(1:ipos-1)//'_zmin_zmax.'//TRIM(cldum)
 
-  npiglo = getdim (cf_in, cn_x)
-  npjglo = getdim (cf_in, cn_y)
-  npk    = getdim (cf_in, cn_z) 
+  npiglo = getdim (cn_fzgr, cn_x)
+  npjglo = getdim (cn_fzgr, cn_y)
+  npk    = getdim (cn_fzgr, cn_z) 
 
   PRINT *, 'NPIGLO = ', npiglo
   PRINT *, 'NPJGLO = ', npjglo
   PRINT *, 'NPK    = ', npk
 
-  ALLOCATE(dtab(npiglo, npjglo))
-  ALLOCATE(itab(npiglo, npjglo))
+  ALLOCATE(dtab(npiglo, npjglo), ssmask(npiglo, npjglo), e1(npiglo, npjglo), e2(npiglo, npjglo), area(npiglo, npjglo))
+  ALLOCATE(itab(npiglo, npjglo), itabcnt(npiglo, npjglo))
 
-  ALLOCATE (stypvar(1))
-  ALLOCATE (ipk(1),id_varout(1))
+  ALLOCATE (stypvar(2))
+  ALLOCATE (ipk(2),id_varout(2))
 
   CALL CreateOutput 
 
   ! initialize variable
   dtab(:,:) = 0.d0 
+  
+  ! get area
+  e1 = getvar(cn_fhgr,cn_ve1t, 1 ,npiglo, npjglo )
+  e2 = getvar(cn_fhgr,cn_ve1t, 1 ,npiglo, npjglo )
+  area(:,:) = e1(:,:) * e2(:,:)
+
   ! read ice shelf draft data
-  dtab = getvar(cf_in, cv_in, 1 ,npiglo, npjglo )
   itab=1
+  itabcnt = 0
+
+  ! read ice shelf draft or top level data
+  dtab = getvar(cn_fzgr, 'isfdraft', 1 ,npiglo, npjglo )
+  ssmask = getvar(cn_fmsk, cn_tmask, 1 ,npiglo, npjglo )
+  
   WHERE ( dtab <=0 ) itab=0
   PRINT *, 'Maximum of ISF-draft : ', MAXVAL(dtab),' m'
 
@@ -176,8 +181,14 @@ PROGRAM cdfisf_fill
   ! loop over each ice shelf
   DO jisf=1,nisf
      ! get iiseed, ijseed, ice shelf number ifill
-     READ(iunit,*) ifill, cisf, rlon, rlat, iiseed, ijseed, rdum, rdum, rdum, rdum, ldiag
+     READ(iunit,*) ifill, cisf, rlon, rlat, iiseed, ijseed, rdum, rdum, rdum0, rdum1, ldiag
+     IF (dtab(iiseed, ijseed) < 0 ) THEN
+        PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cldum)
+        PRINT *,'               check separation with neighbours'
+     ENDIF
+
      IF (ifill < 99) THEN
+        ! add section boundary
         IF (lboundf) CALL update_mask(itab,-ifill)
         IF (itab(iiseed, ijseed) < 0 ) THEN
            PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cisf)
@@ -187,17 +198,37 @@ PROGRAM cdfisf_fill
            PRINT *, '  ==> ERROR: Trouble with seed for isf : ',TRIM(cisf),' id : ',ifill
            STOP
         END IF
+
+        ! fill ice shelf cavities
         CALL FillPool2D(iiseed, ijseed, itab, -ifill, lperio, ldiag)
-   
+
+        ! range of depth for each ice shelf
         rdraftmax=MAXVAL(dtab, (itab == -ifill) )
         rdraftmin=MINVAL(dtab, (itab == -ifill) )
-   
-        PRINT *,'Iceshelf   : ', TRIM(cisf), '  index    : ', ifill
-        PRINT *,'  depmin   : ', rdraftmin
-        PRINT *,'  depmax   : ', rdraftmax
+
+        ! find ice shelf front cell
+        DO ji=2,npiglo-1
+           DO jj = 2, npjglo-1
+              IF ( ssmask(ji,jj) == 1 .AND.                        &
+                   & MINVAL(itab(ji-1:ji+1 , jj-1:jj+1)) == -ifill ) THEN
+                 itabcnt(ji,jj)  = -ifill
+              END IF
+           END DO
+        END DO
+        IF ( lperio ) THEN
+           itabcnt(1     ,:) = itabcnt(npiglo-1,:)
+           itabcnt(npiglo,:) = itabcnt(2       ,:)
+        END IF
+ 
+        PRINT *,'Iceshelf   : ', TRIM(cisf)
+        PRINT *,'  index    : ', ifill
+        PRINT *,'  seed val.: ', INT(dtab(iiseed, ijseed ) )
+        PRINT *,'  depmin [m]   : ', rdraftmin
+        PRINT *,'  depmax [m]   : ', rdraftmax
+        PRINT *,'  area   [km2] : ', SUM(area, (itab == -ifill) ) * 1e-6 ! kmsq
         PRINT *,'   '
      END IF
-     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1,i8)') ifill,ADJUSTL(cisf),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax,rdum,rdum,ldiag
+     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1,i8)') ifill,ADJUSTL(cisf),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax,rdum0,rdum1,ldiag
   END DO
   WRITE(iunitu,'(a)') 'EOF  '
   WRITE(iunitu,'(a5,a20,2a9,2a5,2a8,a)' ) 'No ','NAME                           ',' X',' Y',' I ',' J ',' Zmin',' Zmax',' FWF'
@@ -205,12 +236,9 @@ PROGRAM cdfisf_fill
   CLOSE(iunitu)
   CLOSE(iunit)
 
-  ! set to 0 all unwanted point (why not .GE. 0.0, I don't know)
-  WHERE (dtab >= 1.d0)
-     dtab = 0.0d0
-  END WHERE
-
   ierr = putvar(ncout, id_varout(1), itab, 1, npiglo, npjglo)
+
+ ierr = putvar(ncout, id_varout(2), itabcnt, 1, npiglo, npjglo)
 
   ! close file
   ierr = closeout(ncout)
@@ -232,21 +260,35 @@ CONTAINS
     ! define new variables for output
     ipk(1) = 1  !  2D
     stypvar(1)%ichunk            = (/npiglo,MAX(1,npjglo/30),1,1 /)
-    stypvar(1)%cname             = 'sofillvar'
+    stypvar(1)%cname             = 'mask_isf'
     stypvar(1)%cunits            = 'N/A'
     stypvar(1)%rmissing_value    = 0.
     stypvar(1)%valid_min         = -1000.
     stypvar(1)%valid_max         =  1000.
-    stypvar(1)%clong_name        = 'Fill var'
-    stypvar(1)%cshort_name       = 'sofillvar'
+    stypvar(1)%clong_name        = 'Mask of each ice shelf (id different for each)'
+    stypvar(1)%cshort_name       = 'mask_isf'
     stypvar(1)%conline_operation = 'N/A'
     stypvar(1)%caxis             = 'TYX'
     stypvar(1)%cprecision        = 'i2'
 
+    ! define new variables for output
+    ipk(2) = 1  !  2D
+    stypvar(2)%ichunk            = (/npiglo,MAX(1,npjglo/30),1,1 /)
+    stypvar(2)%cname             = 'mask_isf_front'
+    stypvar(2)%cunits            = 'N/A'
+    stypvar(2)%rmissing_value    = 0.
+    stypvar(2)%valid_min         = -1000.
+    stypvar(2)%valid_max         =  1000.
+    stypvar(2)%clong_name        = 'Mask of each ice shelf front (id different for each)'
+    stypvar(2)%cshort_name       = 'mask_isf_front'
+    stypvar(2)%conline_operation = 'N/A'
+    stypvar(2)%caxis             = 'TYX'
+    stypvar(2)%cprecision        = 'i2'
+
     ! create output file taking the sizes in cf_in
-    ncout  = create      (cf_out,  cf_in,    npiglo, npjglo, npk, ld_nc4=lnc4)
-    ierr   = createvar   (ncout ,  stypvar,  1,  ipk,    id_varout, ld_nc4=lnc4)
-    ierr   = putheadervar(ncout,   cf_in,    npiglo, npjglo, npk )
+    ncout  = create      (cf_out,  cn_fzgr,    npiglo, npjglo, 1, ld_nc4=lnc4)
+    ierr   = createvar   (ncout ,  stypvar,  2,  ipk,    id_varout, ld_nc4=lnc4)
+    ierr   = putheadervar(ncout,   cn_fzgr,    npiglo, npjglo, 1 )
 
     dl_tim(1)=0.d0
     ierr  = putvar1d(ncout, dl_tim, 1, 'T')
