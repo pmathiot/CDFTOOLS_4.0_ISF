@@ -339,6 +339,9 @@ CONTAINS
     stypvar(8)%clong_name     = 'Ice_extent_similar_to_NSIDC_in_Southern_Hemisphere'
     stypvar(8)%cshort_name    = 'SExnsidc'
 
+    stypvar(:)%valid_min = -1.e20
+    stypvar(:)%valid_max =  1.e20
+
     ! create output fileset
     ncout = create      (cf_out, cf_ifil, ikx, iky, ikz )
     ierr  = createvar   (ncout,  stypvar, nboutput, ipk, id_varout                            )
