@@ -501,7 +501,6 @@ CONTAINS
              ENDIF
           END SELECT
 
-PRINT *, TRIM(sdtyvar(jv)%cname), jv
 #if defined key_netcdf4
          IF ( ll_nc4 ) THEN
           istatus = NF90_DEF_VAR(kout, sdtyvar(jv)%cname, iprecision, iidims(1:idims) ,kidvo(jv), & 
