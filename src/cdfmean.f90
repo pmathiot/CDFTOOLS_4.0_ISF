@@ -114,7 +114,7 @@ PROGRAM cdfmean
   LOGICAL                                    :: lnodep    = .FALSE.! no depth flag
   LOGICAL                                    :: lchk               ! flag for missing files
 
-  LOGICAL                                    :: lisf
+  LOGICAL                                    :: lisf      = .FALSE.
   INTEGER                                    :: idisf, iunit
   INTEGER                                    :: jisf, nisf
   CHARACTER(LEN=256)                         :: cfmskisf,cvmskisf, cfnamisf, cdum
@@ -254,11 +254,6 @@ PROGRAM cdfmean
   IF ( lisf ) lchk =  chkfile(cfmskisf) .OR. lchk
   IF ( lisf ) lchk =  chkfile(cfnamisf) .OR. lchk
   IF ( lchk ) STOP 99 ! missing file
-
-  IF ( lbas .AND. lisf ) THEN
-     PRINT *, 'E R R O R: lbas and lisf not compatibale, STOP'
-     STOP 99
-  END IF
 
   IF (lisf) THEN
      OPEN(unit=iunit, file=cfnamisf, form='formatted', status='old')
