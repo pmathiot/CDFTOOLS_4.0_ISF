@@ -187,7 +187,7 @@ CONTAINS
     WHERE( ipk <= 1 ) cv_names='none'
     DO jvar=1,nvars
        stypvar(jvar)%ichunk     = (/npiglo,MAX(1,npjglo/30),1,1 /)
-       stypvar(jvar)%cname      = cv_names(jvar)
+       stypvar(jvar)%cname      = TRIM(cv_names(jvar))//'_bot'
        stypvar(jvar)%caxis      = 'TYX'
        cldum=stypvar(jvar)%clong_name
        stypvar(jvar)%clong_name = 'Bottom '//TRIM(cldum)

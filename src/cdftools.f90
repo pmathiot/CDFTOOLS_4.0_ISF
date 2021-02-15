@@ -179,6 +179,7 @@ CONTAINS
 
     IF (ll_bnd ) THEN
        IF (ll_verbose) WRITE (*,*)'Point  Out of domain or on boundary'
+       STOP 99
     ELSE
        imin=iloc
        jmin=jloc
@@ -229,6 +230,7 @@ CONTAINS
        END DO
        IF (ll_bnd ) THEN
           IF (ll_verbose) WRITE (*,*) 'Point  Out of domain or on boundary'
+          STOP 99
        ELSE
           imax=iloc
           jmax=jloc

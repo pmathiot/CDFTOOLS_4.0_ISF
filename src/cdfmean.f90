@@ -114,7 +114,7 @@ PROGRAM cdfmean
   LOGICAL                                    :: lnodep    = .FALSE.! no depth flag
   LOGICAL                                    :: lchk               ! flag for missing files
 
-  LOGICAL                                    :: lisf
+  LOGICAL                                    :: lisf      = .FALSE.
   INTEGER                                    :: idisf, iunit
   INTEGER                                    :: jisf, nisf
   CHARACTER(LEN=256)                         :: cfmskisf,cvmskisf, cfnamisf, cdum
@@ -255,11 +255,6 @@ PROGRAM cdfmean
   IF ( lisf ) lchk =  chkfile(cfnamisf) .OR. lchk
   IF ( lchk ) STOP 99 ! missing file
 
-  IF ( lbas .AND. lisf ) THEN
-     PRINT *, 'E R R O R: lbas and lisf not compatibale, STOP'
-     STOP 99
-  END IF
-
   IF (lisf) THEN
      OPEN(unit=iunit, file=cfnamisf, form='formatted', status='old')
      ! get number of isf
@@ -398,8 +393,8 @@ PROGRAM cdfmean
   IF ( lbas ) THEN
      DO jbasin = 1, nbas
         ibmask(jbasin,:,:) = getvar(cn_fbasins, cbas(jbasin), 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
+        cbasins(jbasin)=cbas(jbasin)
      END DO
-     cbasins(jbasin)=cbas(jbasin)
   END IF
 
   PRINT *, nbas
@@ -612,7 +607,7 @@ CONTAINS
     DO jbasin = 1,nbasin
 
        IF ( lbas .OR. lisf )  THEN ; cl_suffix='_'//TRIM(cbasins(jbasin))
-       ELSE              ; cl_suffix=''
+       ELSE                        ; cl_suffix=''
        ENDIF
        ivar=ivar+1 ; n_mean(jbasin)=ivar
        ipk(n_mean(jbasin))            =  nvpk
