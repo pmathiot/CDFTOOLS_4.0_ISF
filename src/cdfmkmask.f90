@@ -59,6 +59,7 @@ PROGRAM cdfmkmask
   CHARACTER(LEN=256)                        :: cf_boundary = 'boundary.txt' ! default boundary input file
   CHARACTER(LEN=256)                        :: cv_mask                  ! variable name
   CHARACTER(LEN=256)                        :: cv_dep , cv_var          ! variable name
+  CHARACTER(LEN=256)                        :: cndim                    ! file type (2d or 3d)
   CHARACTER(LEN=256)                        :: cldum                    ! dummy string
 
   TYPE (variable), DIMENSION(4)             :: stypvar                  ! output attribute
@@ -117,9 +118,10 @@ PROGRAM cdfmkmask
      PRINT *,'       [-zoomij iimin iimax ijmin ijmax] : model grid windows used to'
      PRINT *,'                        limit the area where the mask is builded. Outside'
      PRINT *,'                        this area, the mask is set to 0.'
-     PRINT *,'       [-zoomvar varmin varmax] : range of varname variable used to'
+     PRINT *,'       [-zoomvar varname varmin varmax 2d/3d] : range of varname variable used to'
      PRINT *,'                        limit the area where the mask is builded. Outside'
-     PRINT *,'                        this area, the mask is set to 0.'
+     PRINT *,'                        this area, the mask is set to 0. . '
+     PRINT *,'                        You need to specify if the variable is 2d of 3d'
      PRINT *,'       [-fill iipoint jjpoint] : mask everything except the cells into the'
      PRINT *,'                        non mask area where the point (iipoint,jjpoint) is.'
      PRINT *,'       [-filllonlat lon lat] : mask everything except the cells into the'
@@ -181,6 +183,7 @@ PROGRAM cdfmkmask
         CALL getarg (ijarg, cv_var)  ; ijarg = ijarg + 1
         CALL getarg (ijarg, cldum)   ; ijarg = ijarg + 1 ; READ(cldum,*) rvarmin 
         CALL getarg (ijarg, cldum)   ; ijarg = ijarg + 1 ; READ(cldum,*) rvarmax 
+        CALL getarg (ijarg, cndim)   ; ijarg = ijarg + 1
         !
      CASE ( '-fill' )  ! read a seed point and a boundary file
         lfill = .true.
@@ -282,6 +285,24 @@ PROGRAM cdfmkmask
      ssmask(:,1:ijmin-1     ) = 0   ! South
   ENDIF
 
+  !! variable constrain
+  IF ( lzoomvar .AND. TRIM(cndim)=='2d') THEN
+     zmask(:,:) = getvar(cf_tfil, cv_var, 1, npiglo, npjglo)
+     WHERE ((zmask >= rvarmin) .AND. (zmask <= rvarmax)) 
+        zmask = 1
+     ELSEWHERE
+        zmask = 0
+     ENDWHERE
+     ssmask=ssmask*zmask
+  ENDIF
+
+  !! fill constrain
+  IF ( lfill .OR. lfilllonlat ) THEN
+     zmask=ssmask
+     CALL FillMask(zmask,iipts,ijpts,rlonpts,rlatpts)
+     ssmask=zmask
+  ENDIF
+ 
   !! Now compute the mask 
   DO jt=1, npt
      IF (MOD(jt,10)==0) PRINT *,jt,'/',npt,' ...'
@@ -293,7 +314,7 @@ PROGRAM cdfmkmask
         tmask_bck(:,:) = tmask(:,:)
 
         !! variable constrain
-        IF ( lzoomvar ) THEN
+        IF ( lzoomvar .AND. TRIM(cndim)=='3d') THEN
            tmask(:,:) = getvar(cf_tfil, cv_var,  jk, npiglo, npjglo, ktime=jt)
            zmask=tmask
            WHERE ((tmask >= rvarmin) .AND. (tmask <= rvarmax)) zmask = 1
@@ -301,14 +322,7 @@ PROGRAM cdfmkmask
            tmask=tmask_bck*zmask
         ENDIF
 
-        !! fill constrain
-        IF ( lfill .OR. lfilllonlat ) THEN
-           zmask=tmask
-           CALL FillMask(zmask,iipts,ijpts,rlonpts,rlatpts)
-           tmask=zmask
-        ENDIF
-    
-        !! reverse selection
+       !! reverse selection
         IF ( lreverse ) THEN
            tmask = -1 * tmask
            WHERE (tmask == 0 ) 

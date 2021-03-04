@@ -3,13 +3,13 @@
   ! Dimension name : cn_. [ 1 letter only ]
   CHARACTER(LEN=256) :: cn_x='|x|X|lon|x_grid_T|x_grid_U|x_grid_V|x_grid_W|'               !: longitude, I dimension
   CHARACTER(LEN=256) :: cn_y='|y|Y|lat|y_grid_T|y_grid_U|y_grid_V|y_grid_W|'               !: latitude,  J dimension
-  CHARACTER(LEN=256) :: cn_z='|z|depth|deptht|depthu|depthv|depthw|sigma|nav_lev|levels|ncatice|icbcla|icbsect|'             !: depth, z dimension
+  CHARACTER(LEN=256) :: cn_z='|z|depth|deptht|depthu|depthv|depthw|sigma|nav_lev|levels|ncatice|icbcla|icbsect|ZAX|'             !: depth, z dimension
   CHARACTER(LEN=256) :: cn_t='|time_counter|time|t|time_instant|'   !: time dimension
 
   ! Dimension variable
-  CHARACTER(LEN=256) :: cn_vlon2d  = '|nav_lon|lon|nav_lon_grid_T|nav_lon_grid_U|nav_lon_grid_V|'      !: longitude
-  CHARACTER(LEN=256) :: cn_vlat2d  = '|nav_lat|lat|nav_lat_grid_T|nav_lat_grid_U|nav_lat_grid_V|'      !: latitude
-  CHARACTER(LEN=256) :: cn_vdeptht = '|deptht|depth|nav_lev|'       !: depth
+  CHARACTER(LEN=256) :: cn_vlon2d  = '|nav_lon|lon|nav_lon_grid_T|nav_lon_grid_U|nav_lon_grid_V|glamt|'      !: longitude
+  CHARACTER(LEN=256) :: cn_vlat2d  = '|nav_lat|lat|nav_lat_grid_T|nav_lat_grid_U|nav_lat_grid_V|gphit|'      !: latitude
+  CHARACTER(LEN=256) :: cn_vdeptht = '|deptht|depth|nav_lev|ZAX|'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthu = 'depthu'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthv = 'depthv'       !: depth
   CHARACTER(LEN=256) :: cn_vdepthw = 'depthw'       !: depth
@@ -72,8 +72,8 @@
   CHARACTER(LEN=256) :: cn_fbasins='subbasin.nc'
 
   ! Variable name  : cn_v... [ starts with cn_v ]
-  CHARACTER(LEN=256) :: cn_votemper='|thetao|votemper|temp|temperature|t_an|'   !: temperature
-  CHARACTER(LEN=256) :: cn_vosaline='|so|vosaline|salinity|sal|s_an|'       !: salinity
+  CHARACTER(LEN=256) :: cn_votemper='|thetao|votemper|temp|temperature|t_an|TPOTEN|'   !: temperature
+  CHARACTER(LEN=256) :: cn_vosaline='|so|vosaline|salinity|sal|s_an|SALINITY|'       !: salinity
   CHARACTER(LEN=256) :: cn_votemper2='|theta2o|thetao_sqd|' !: squared temperature
   CHARACTER(LEN=256) :: cn_vosaline2='|s2o|so_sqd|'         !: squared salinity
   CHARACTER(LEN=256) :: cn_vozocrtx ='|uo|vozocrtx|'        !: zonal velocity

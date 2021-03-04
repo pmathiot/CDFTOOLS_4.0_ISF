@@ -178,6 +178,7 @@ PROGRAM cdfmaskdmp
 
            ENDDO
         ENDDO
+        PRINT *, zdep(jk    ),MAXVAL(zwdmp)
 
         zwdmp(:,:) = zwdmp(:,:) * zmask(:,:)
 
