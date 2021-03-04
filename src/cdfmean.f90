@@ -393,8 +393,8 @@ PROGRAM cdfmean
   IF ( lbas ) THEN
      DO jbasin = 1, nbas
         ibmask(jbasin,:,:) = getvar(cn_fbasins, cbas(jbasin), 1, npiglo, npjglo, kimin=iimin, kjmin=ijmin)
+        cbasins(jbasin)=cbas(jbasin)
      END DO
-     cbasins(jbasin)=cbas(jbasin)
   END IF
 
   PRINT *, nbas
@@ -607,7 +607,7 @@ CONTAINS
     DO jbasin = 1,nbasin
 
        IF ( lbas .OR. lisf )  THEN ; cl_suffix='_'//TRIM(cbasins(jbasin))
-       ELSE              ; cl_suffix=''
+       ELSE                        ; cl_suffix=''
        ENDIF
        ivar=ivar+1 ; n_mean(jbasin)=ivar
        ipk(n_mean(jbasin))            =  nvpk
