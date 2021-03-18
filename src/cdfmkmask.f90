@@ -254,60 +254,72 @@ PROGRAM cdfmkmask
   ENDIF
 
   ALLOCATE (dtim(npt))
+  PRINT *, npt
 
   CALL CreateOutput
 
   !! Allocate only usefull variable and read only usefull variable
   ALLOCATE (tmask(npiglo,npjglo), zmask(npiglo,npjglo), ssmask(npiglo,npjglo), tmask_bck(npiglo,npjglo))
-  ssmask(:,:) = 1.
 
-  !! lat/lon constrain
-  IF ( lzoom ) THEN
-     ALLOCATE (rlon(npiglo,npjglo), rlat(npiglo,npjglo))
-     rlon(:,:) = getvar(cf_tfil, cn_vlon2d, 1, npiglo, npjglo)
-     rlat(:,:) = getvar(cf_tfil, cn_vlat2d, 1, npiglo, npjglo)
-     IF (rlonmax > rlonmin) THEN
-        WHERE (rlon > rlonmax ) ssmask = 0
-        WHERE (rlon < rlonmin ) ssmask = 0
-     ELSE
-        WHERE (rlon < rlonmin .AND. rlon > rlonmax ) ssmask = 0
+  DO jt=1, npt
+     IF (MOD(jt,10)==0) PRINT *,'time ',jt,'/',npt,' ...'
+     PRINT *,'time ',jt,'/',npt,' ...'
+
+     ssmask(:,:) = 1.
+
+     IF ( l2dmask ) THEN
+        ssmask(:,:) = getvar(cf_tfil, cv_mask,  1, npiglo, npjglo, ktime=jt)
      END IF
 
-     WHERE (rlat > rlatmax ) ssmask = 0
-     WHERE (rlat < rlatmin ) ssmask = 0
-  ENDIF
-
-  !! i/j constrain
-  IF ( lzoomij ) THEN
-     ssmask(1:iimin-1,:     ) = 0   ! West
-     ssmask(iimax+1:npiglo,:) = 0   ! East
-     ssmask(:,ijmax+1:npjglo) = 0   ! North
-     ssmask(:,1:ijmin-1     ) = 0   ! South
-  ENDIF
-
-  !! variable constrain
-  IF ( lzoomvar .AND. TRIM(cndim)=='2d') THEN
-     zmask(:,:) = getvar(cf_tfil, cv_var, 1, npiglo, npjglo)
-     WHERE ((zmask >= rvarmin) .AND. (zmask <= rvarmax)) 
-        zmask = 1
-     ELSEWHERE
-        zmask = 0
-     ENDWHERE
-     ssmask=ssmask*zmask
-  ENDIF
-
-  !! fill constrain
-  IF ( lfill .OR. lfilllonlat ) THEN
-     zmask=ssmask
-     CALL FillMask(zmask,iipts,ijpts,rlonpts,rlatpts)
-     ssmask=zmask
-  ENDIF
- 
-  !! Now compute the mask 
-  DO jt=1, npt
-     IF (MOD(jt,10)==0) PRINT *,jt,'/',npt,' ...'
+     PRINT *, npt
+     !! lat/lon constrain
+     IF ( lzoom ) THEN
+        ALLOCATE (rlon(npiglo,npjglo), rlat(npiglo,npjglo))
+        rlon(:,:) = getvar(cf_tfil, cn_vlon2d, 1, npiglo, npjglo)
+        rlat(:,:) = getvar(cf_tfil, cn_vlat2d, 1, npiglo, npjglo)
+        IF (rlonmax > rlonmin) THEN
+           WHERE (rlon > rlonmax ) ssmask = 0
+           WHERE (rlon < rlonmin ) ssmask = 0
+        ELSE
+           WHERE (rlon < rlonmin .AND. rlon > rlonmax ) ssmask = 0
+        END IF
+   
+        WHERE (rlat > rlatmax ) ssmask = 0
+        WHERE (rlat < rlatmin ) ssmask = 0
+     ENDIF
+   
+     PRINT *, npt
+     !! i/j constrain
+     IF ( lzoomij ) THEN
+        ssmask(1:iimin-1,:     ) = 0   ! West
+        ssmask(iimax+1:npiglo,:) = 0   ! East
+        ssmask(:,ijmax+1:npjglo) = 0   ! North
+        ssmask(:,1:ijmin-1     ) = 0   ! South
+     ENDIF
+   
+     PRINT *, npt
+     !! variable constrain
+     IF ( lzoomvar .AND. TRIM(cndim)=='2d') THEN
+        zmask(:,:) = getvar(cf_tfil, cv_var, 1, npiglo, npjglo)
+        WHERE ((zmask >= rvarmin) .AND. (zmask <= rvarmax)) 
+           zmask = 1
+        ELSEWHERE
+           zmask = 0
+        ENDWHERE
+        ssmask=ssmask*zmask
+     ENDIF
+   
+     PRINT *, 'before fill: ',npt
+     !! fill constrain
+     IF ( lfill .OR. lfilllonlat ) THEN
+        zmask=ssmask
+        CALL FillMask(zmask,iipts,ijpts,rlonpts,rlatpts)
+        ssmask=zmask
+     ENDIF
+    
+     !! Now compute the mask 
      DO jk=1, npkk
-        PRINT *, jk,'/',npkk
+        PRINT *, 'depth ',jk,'/',npkk
 
         tmask(:,:) = getvar(cf_tfil, cv_mask,  jk, npiglo, npjglo, ktime=jt)
         tmask(:,:) = tmask(:,:) * ssmask(:,:)
@@ -376,6 +388,7 @@ CONTAINS
     INTEGER(KIND=4)                              :: ipos           ! working integer (position of ' ' in strings)
     INTEGER(KIND=4)                              :: ii, jk         ! working integer
     INTEGER(KIND=4)                              :: iunit=10
+    INTEGER(KIND=4)                              :: nidx
 
     REAL(KIND=4)                                 :: zlonmin, zlonmax, zlatmin, zlatmax
     REAL(KIND=4),  INTENT(in)                    :: rlonpts, rlatpts
@@ -417,6 +430,7 @@ CONTAINS
              lsection = .FALSE.
           ELSE
              ! read section coordinates
+    PRINT *, 'before first findij ',npt
              IF (lboundflonlat) THEN
                 READ(iunit,*) zlonmin, zlonmax, zlatmin, zlatmax, linc
                 CALL cdf_findij ( zlonmin, zlonmax, zlatmin, zlatmax, iimin, iimax, ijmin, ijmax, &
@@ -426,10 +440,11 @@ CONTAINS
              ENDIF
 
              ! get index of cell included into the section
-             CALL broken_line(iimin, iimax, ijmin, ijmax, rxx, ryy, npt, npiglo, npjglo)
+    PRINT *, 'before broken line ',npt
+             CALL broken_line(iimin, iimax, ijmin, ijmax, rxx, ryy, nidx, npiglo, npjglo)
  
              ! mask boundary and keep location in rmskline
-             DO jk=1,npt
+             DO jk=1,nidx
                 IF (linc)  rmskline(rxx(jk),ryy(jk))=1.0 * rmsk_bck(rxx(jk),ryy(jk))
                 rmask(rxx(jk),ryy(jk))=0.0
              END DO
@@ -444,13 +459,16 @@ CONTAINS
 
     ! fill area
     ! find ij if lon/lat given
+    PRINT *, 'before findij ',npt
     IF (lfilllonlat) THEN
        CALL cdf_findij ( rlonpts, rlonpts, rlatpts, rlatpts, iipts, iipts, ijpts, ijpts, &
              &            cd_coord=cn_fhgr, cd_point='T', cd_verbose='F')   
     ENDIF
     imask = NINT(rmask,2)
+    PRINT *, 'before FillPool ',npt
     CALL FillPool2D(iipts, ijpts, imask, -1, lperio, .FALSE.) ! fill pool (use -1 to flag the
                                              ! area and avoid infinit loop in the algo
+    PRINT *, 'after FillPool ',npt
 
     ! keep only the point selected by the flood filling algo
     WHERE (imask == -1.0)
