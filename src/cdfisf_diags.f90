@@ -190,7 +190,7 @@ PROGRAM cdfisf_diags
      DO jisf=1,nisf
 
         ! read text file
-        READ(iunit,*) id_isf, cdum, rdum, rdum, idum, idum, idum, idum, fwfobs 
+        READ(iunit,*) id_isf, cdum, rdum, rdum, idum, idum, fwfobs
 
         ! set mask
         mask(:,:) = 0.0
@@ -237,7 +237,7 @@ CONTAINS
     ! loop on all isf
     DO jisf=1,nisf
        ! read text file
-       READ(iunit,*) cid_isf, cdum, rdum, rdum, idum, idum, idum, idum, fwfobs
+       READ(iunit,*) cid_isf, cdum, rdum, rdum, idum, idum, fwfobs
  
        stypvar(jisf)%cunits            = 'Gt/y'
        stypvar(jisf)%rmissing_value    = -1.e4

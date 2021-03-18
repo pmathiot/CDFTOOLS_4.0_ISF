@@ -35,6 +35,7 @@ PROGRAM cdfisf_fill
   INTEGER(KIND=4)                               :: ncout              ! ncid of output files
   INTEGER(KIND=4)                               :: iiseed, ijseed
   INTEGER(KIND=4)                               :: ifill
+  INTEGER(KIND=4)                               :: nerr, idum
   INTEGER(KIND=4), DIMENSION(:),    ALLOCATABLE :: ipk                ! arrays of vertical level for each var
   INTEGER(KIND=4), DIMENSION(:),    ALLOCATABLE :: id_varout          ! varid's of average vars
   INTEGER(KIND=2), DIMENSION(:,:),  ALLOCATABLE :: itab, itabcnt
@@ -179,9 +180,15 @@ PROGRAM cdfisf_fill
   PRINT *, '   Number of ISF found in file list : ', nisf
 
   ! loop over each ice shelf
+  nerr=0
   DO jisf=1,nisf
      ! get iiseed, ijseed, ice shelf number ifill
-     READ(iunit,*) ifill, cisf, rlon, rlat, iiseed, ijseed, rdum, rdum, rdum0, rdum1, ldiag
+     READ(iunit,*) ifill, cisf, rlat, rlon, rdum, rdum, rdum0, rdum1, ldiag
+
+     ! find iiseed and ijseed
+     CALL cdf_findij ( rlon, rlon, rlat, rlat, iiseed, idum, ijseed, idum, &
+          &            cd_coord=cn_fhgr, cd_point='T', cd_verbose='F')
+
      IF (dtab(iiseed, ijseed) < 0 ) THEN
         PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cldum)
         PRINT *,'               check separation with neighbours'
@@ -190,48 +197,57 @@ PROGRAM cdfisf_fill
      IF (ifill < 99) THEN
         ! add section boundary
         IF (lboundf) CALL update_mask(itab,-ifill)
+
         IF (itab(iiseed, ijseed) < 0 ) THEN
            PRINT *,'  ==> WARNING: Likely a problem with ',TRIM(cisf)
            PRINT *,'               check separation with neighbours'
         ENDIF
+
         IF (dtab(iiseed, ijseed) < 2) THEN
+           PRINT *, ''
            PRINT *, '  ==> ERROR: Trouble with seed for isf : ',TRIM(cisf),' id : ',ifill
-           STOP
-        END IF
+           PRINT *, '             iiseed, ijseed, mask : ', iiseed, ijseed, dtab(iiseed, ijseed)
+           PRINT *, ''
+           nerr=nerr+1
+        ELSE
 
-        ! fill ice shelf cavities
-        CALL FillPool2D(iiseed, ijseed, itab, -ifill, lperio, ldiag)
-
-        ! range of depth for each ice shelf
-        rdraftmax=MAXVAL(dtab, (itab == -ifill) )
-        rdraftmin=MINVAL(dtab, (itab == -ifill) )
-
-        ! find ice shelf front cell
-        DO ji=2,npiglo-1
-           DO jj = 2, npjglo-1
-              IF ( ssmask(ji,jj) == 1 .AND.                        &
-                   & MINVAL(itab(ji-1:ji+1 , jj-1:jj+1)) == -ifill ) THEN
-                 itabcnt(ji,jj)  = -ifill
-              END IF
+           ! fill ice shelf cavities
+           CALL FillPool2D(iiseed, ijseed, itab, -ifill, lperio, ldiag)
+   
+           ! range of depth for each ice shelf
+           rdraftmax=MAXVAL(dtab, (itab == -ifill) )
+           rdraftmin=MINVAL(dtab, (itab == -ifill) )
+   
+           ! find ice shelf front cell
+           DO ji=2,npiglo-1
+              DO jj = 2, npjglo-1
+                 IF ( ssmask(ji,jj) == 1 .AND.                        &
+                      & MINVAL(itab(ji-1:ji+1 , jj-1:jj+1)) == -ifill ) THEN
+                    itabcnt(ji,jj)  = -ifill
+                 END IF
+              END DO
            END DO
-        END DO
-        IF ( lperio ) THEN
-           itabcnt(1     ,:) = itabcnt(npiglo-1,:)
-           itabcnt(npiglo,:) = itabcnt(2       ,:)
+           IF ( lperio ) THEN
+              itabcnt(1     ,:) = itabcnt(npiglo-1,:)
+              itabcnt(npiglo,:) = itabcnt(2       ,:)
+           END IF
+    
+           PRINT *,'Iceshelf   : ', TRIM(cisf)
+           PRINT *,'  index    : ', ifill
+           PRINT *,'  seed lat/lon : ', rlon, rlat
+           PRINT *,'  seed val.    : ', iiseed, ijseed, INT(dtab(iiseed, ijseed ) )
+           PRINT *,'  depmin [m]   : ', rdraftmin
+           PRINT *,'  depmax [m]   : ', rdraftmax
+           PRINT *,'  area   [km2] : ', SUM(area, (itab == -ifill) ) * 1e-6 ! kmsq
+           PRINT *,'   '
+
+           WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1,i8)') ifill,ADJUSTL(cisf),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax,rdum0,rdum1,ldiag
+
         END IF
- 
-        PRINT *,'Iceshelf   : ', TRIM(cisf)
-        PRINT *,'  index    : ', ifill
-        PRINT *,'  seed val.: ', INT(dtab(iiseed, ijseed ) )
-        PRINT *,'  depmin [m]   : ', rdraftmin
-        PRINT *,'  depmax [m]   : ', rdraftmax
-        PRINT *,'  area   [km2] : ', SUM(area, (itab == -ifill) ) * 1e-6 ! kmsq
-        PRINT *,'   '
      END IF
-     WRITE(iunitu,'(i4,1x,a20,2f9.4,2i5,2f8.1,i8)') ifill,ADJUSTL(cisf),rlon, rlat, iiseed, ijseed,rdraftmin,rdraftmax,rdum0,rdum1,ldiag
   END DO
   WRITE(iunitu,'(a)') 'EOF  '
-  WRITE(iunitu,'(a5,a20,2a9,2a5,2a8,a)' ) 'No ','NAME                           ',' X',' Y',' I ',' J ',' Zmin',' Zmax',' FWF'
+  WRITE(iunitu,'(a5,a20,2a9,2a5,2a8,a)' ) 'No ','NAME                           ',' lat',' lon',' I ',' J ',' Zmin',' Zmax',' FWF'
 
   CLOSE(iunitu)
   CLOSE(iunit)
