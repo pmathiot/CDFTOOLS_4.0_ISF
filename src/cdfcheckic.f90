@@ -143,7 +143,6 @@ PROGRAM cdfcheckic
      PRINT *,jt,'/',npt
 
      !  2  compute 3d t/s/wmask
-     PRINT *, 'load T/S'
      ztem (:,:,:) = getvar3d(cf_tfil, cn_votemper, npiglo, npjglo, npk, ktime=jt)
      zsal (:,:,:) = getvar3d(cf_tfil, cn_vosaline, npiglo, npjglo, npk, ktime=jt)
 
@@ -265,8 +264,8 @@ CONTAINS
                   ! Interpolating alfa and beta at W point:
                   zrw =  (zgdepw(jk  ) - zgdept(jk)) &
                      & / (zgdept(jk-1) - zgdept(jk))
-                  zaw = zvab(jk,jp_tem) * (1.    - zrw) + zvab(jk-1,jp_tem) * zrw
-                  zbw = zvab(jk,jp_sal) * (1.    - zrw) + zvab(jk-1,jp_sal) * zrw
+                  zaw = zvab(jk,jp_tem) * (1.    - zrw) + zvab(jk-1,jp_tem) * zrw * wmask(ji,jj,jk)
+                  zbw = zvab(jk,jp_sal) * (1.    - zrw) + zvab(jk-1,jp_sal) * zrw * wmask(ji,jj,jk)
                   !
                   ! compute N2
                   zvn2(jk) = grav*( zaw * ( zvts(jk-1,jp_tem) - zvts(jk,jp_tem) )     &
@@ -305,8 +304,8 @@ CONTAINS
                         !
                         !! If the points above ikp-1 have N2 == 0 they must also be mixed:
                         IF( ikp > iktop+1 ) THEN
-                           DO jk = ikp-1, 2, -1
-                           IF( ABS(zvn2(jk)) < zn2_zero ) THEN
+                           DO jk = ikp-1, iktop+1, -1
+                              IF( ABS(zvn2(jk)) < zn2_zero ) THEN
                                  ikup = ikup - 1  ! 1 more upper level has N2=0 and must be added for the mixing
                               ELSE
                                  EXIT
@@ -314,14 +313,13 @@ CONTAINS
                            END DO
                         ENDIF
                         
-                        IF( ikup < 1 )  STOP 'tra_npc :  PROBLEM #1'
+                        IF( iktop < iktop )  STOP 'tra_npc :  PROBLEM #1'
                         !
                         zsum_temp = 0.   
                         zsum_sali = 0.   
                         zsum_alfa = 0.   
                         zsum_beta = 0.   
                         zsum_z    = 0.   
-                                                 
                         DO jk = ikup, ikbot     ! Inside the instable (and overlying neutral) portion of the column
                            !
                            zdz       = e3t(ji,jj,jk)
@@ -357,7 +355,7 @@ CONTAINS
                         !! Temperature, Salinity, Alpha and Beta have been homogenized in the unstable portion
                         !! => Need to re-compute N2! will use Alpha and Beta!
                         
-                        ikup   = MAX(2,ikup)         ! ikup can never be 1 !
+                        ikup   = MAX(iktop+1,ikup)         ! ikup can never be 1 !
                         ik_low = MIN(ikdown+1,ikbot) ! we must go 1 point deeper than ikdown!
                         
                         DO jk = ikup, ik_low              ! we must go 1 point deeper than ikdown!
@@ -365,8 +363,8 @@ CONTAINS
                            !! Interpolating alfa and beta at W point:
                            zrw =  (zgdepw(jk  ) - zgdept(jk)) &
                               & / (zgdept(jk-1) - zgdept(jk))
-                           zaw = zvab(jk,jp_tem) * (1.    - zrw) + zvab(jk-1,jp_tem) * zrw
-                           zbw = zvab(jk,jp_sal) * (1.    - zrw) + zvab(jk-1,jp_sal) * zrw
+                           zaw = zvab(jk,jp_tem) * (1.    - zrw) + zvab(jk-1,jp_tem) * zrw * wmask(ji,jj,jk)
+                           zbw = zvab(jk,jp_sal) * (1.    - zrw) + zvab(jk-1,jp_sal) * zrw * wmask(ji,jj,jk)
    
                            !! N2 at W point, doing exactly as in eosbn2.F90:
                            zvn2(jk) = grav*( zaw * ( zvts(jk-1,jp_tem) - zvts(jk,jp_tem) )     &
