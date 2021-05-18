@@ -279,7 +279,7 @@ CONTAINS
     INTEGER(4), INTENT(in) :: kiseed, kjseed                   ! seeds
     INTEGER(4), INTENT(in) :: kimin, kimax, kjmin, kjmax       ! position of the data windows
     INTEGER(4), INTENT(in) :: kcrit                            ! max size of the pool
-    REAL(4)   , INTENT(in) :: rfillmax, rfillmin, rfillval  ! pool def criterium
+    REAL(4)   , INTENT(in) :: rfillmax, rfillmin, rfillval     ! pool def criterium
     REAL(4)   , DIMENSION(:,:), INTENT(inout) :: rdta          ! mask
     LOGICAL, INTENT(in)    :: lperio
 
@@ -312,7 +312,7 @@ CONTAINS
 
     ! define initial seeds
     ioptm(:,:) = 0
-    WHERE ( rdta  > rfillmin .AND. rdta < rfillmax)
+    WHERE ( rdta  > rfillmin .AND. rdta <= rfillmax)
       ioptm = 1
     END WHERE
 
@@ -385,19 +385,19 @@ CONTAINS
              ifill(ii,ij) = 1
 
              ! check neighbour cells and update pile
-             IF (idata(ii, ijp1) > rfillmin .AND. idata(ii, ijp1) < rfillmax .AND. ioptm(ii, ijp1) == 1) THEN
+             IF (idata(ii, ijp1) > rfillmin .AND. idata(ii, ijp1) <= rfillmax .AND. ioptm(ii, ijp1) == 1) THEN
                 ip=ip+1; ipile(ip,:)=[ii  ,ijp1]
                 ioptm (ii,ijp1) = 0
              END IF
-             IF (idata(ii, ijm1) > rfillmin .AND. idata(ii, ijm1) < rfillmax .AND. ioptm(ii, ijm1) == 1) THEN
+             IF (idata(ii, ijm1) > rfillmin .AND. idata(ii, ijm1) <= rfillmax .AND. ioptm(ii, ijm1) == 1) THEN
                 ip=ip+1; ipile(ip,:)=[ii  ,ijm1]
                 ioptm (ii,ijm1) = 0
              END IF
-             IF (idata(iip1, ij) > rfillmin .AND. idata(iip1, ij) < rfillmax .AND. ioptm(iip1, ij) == 1) THEN
+             IF (idata(iip1, ij) > rfillmin .AND. idata(iip1, ij) <= rfillmax .AND. ioptm(iip1, ij) == 1) THEN
                 ip=ip+1; ipile(ip,:)=[iip1,ij  ]
                 ioptm (iip1,ij) = 0
              END IF
-             IF (idata(iim1, ij) > rfillmin .AND. idata(iim1, ij) < rfillmax .AND. ioptm(iim1, ij) == 1) THEN
+             IF (idata(iim1, ij) > rfillmin .AND. idata(iim1, ij) <= rfillmax .AND. ioptm(iim1, ij) == 1) THEN
                 ip=ip+1; ipile(ip,:)=[iim1,ij  ]
                 ioptm (iim1,ij) = 0
              END IF
